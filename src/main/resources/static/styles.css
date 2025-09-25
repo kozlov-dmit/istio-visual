@@ -5,8 +5,8 @@
     --app: #38bdf8;
     --sidecar: #c084fc;
     --external: #f97316;
-    --link: rgba(148, 163, 184, 0.6);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --edge: rgba(148, 163, 184, 0.6);
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
@@ -79,13 +79,36 @@ body {
 .graph-panel {
     position: relative;
     overflow: hidden;
+    min-height: 0;
 }
 
-#graph-canvas {
+.graph-canvas {
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.graph-svg {
     width: 100%;
     height: 100%;
     display: block;
-    background: rgba(15, 23, 42, 0.55);
+}
+
+.graph-svg text {
+    pointer-events: none;
+}
+
+.graph-svg circle {
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.graph-svg circle:hover {
+    transform: scale(1.05);
+}
+
+.graph-svg line {
+    cursor: pointer;
 }
 
 .legend {
@@ -98,6 +121,7 @@ body {
     font-size: 0.9rem;
     display: flex;
     gap: 1rem;
+    pointer-events: none;
 }
 
 .legend-dot {
@@ -128,7 +152,7 @@ body {
     margin-top: 0;
 }
 
-.details {
+.details, .summary {
     background: rgba(30, 41, 59, 0.82);
     padding: 0.75rem;
     border-radius: 6px;
@@ -138,10 +162,6 @@ body {
 }
 
 .summary {
-    background: rgba(30, 41, 59, 0.82);
-    padding: 0.75rem;
-    border-radius: 6px;
-    font-size: 0.9rem;
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
@@ -177,6 +197,15 @@ body {
 .status[data-state='error'] { color: #f87171; }
 .status[data-state='pending'] { color: #fbbf24; }
 .status[data-state='ok'] { color: #4ade80; }
+
+.empty-state {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1rem;
+    color: #94a3b8;
+}
 
 @media (max-width: 960px) {
     .layout {

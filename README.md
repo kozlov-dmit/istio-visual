@@ -118,3 +118,4 @@ Errors when contacting the Kubernetes API yield `502 Bad Gateway` with a JSON bo
 - The frontend runs without a build step; edit the files in `src/main/resources/static` and reload your browser while the Spring Boot dev server is running.
 
 
+

@@ -125,146 +125,331 @@ function renderGraph(data) {
     if (activeGraph) {
         activeGraph.teardown();
     }
-    activeGraph = new ForceGraph(canvas, data, updateSelection);
+    activeGraph = new TopologyGraph(canvas, data, updateSelection);
 }
 
-class ForceGraph {
+class TopologyGraph {
     constructor(canvas, data, onSelect) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.onSelect = onSelect;
-        this.data = data;
-        this.nodes = [];
-        this.edges = [];
-        this.selected = null;
-        this.dragging = null;
         this.width = canvas.width;
         this.height = canvas.height;
-        this._podCenters = new Map();
-        this._initGraph();
+        this.nodes = [];
+        this.edges = [];
+        this.nodeMap = new Map();
+        this.nodeGroups = new Map();
+        this.groups = new Map();
+        this.selected = null;
+        this._initGraph(data);
         this._bindEvents();
-        this._run();
+        this._layout();
+        this._draw();
     }
 
     setSize(width, height) {
         this.width = width;
         this.height = height;
+        this.canvas.width = width;
+        this.canvas.height = height;
+        this._layout();
+        this._draw();
     }
 
     teardown() {
-        cancelAnimationFrame(this._raf);
-        this.canvas.removeEventListener('mousedown', this._onMouseDown);
-        window.removeEventListener('mousemove', this._onMouseMove);
-        window.removeEventListener('mouseup', this._onMouseUp);
+        if (this._onClick) {
+            this.canvas.removeEventListener('click', this._onClick);
+        }
     }
 
-    _initGraph() {
-        const colors = this._resolveColors();
-        const nodeMap = new Map();
-        for (const node of this.data.nodes || []) {
-            const properties = node.properties || {};
-            const podKey = properties.pod ? `${properties.namespace || ''}:${properties.pod}` : null;
-            const containerType = properties.containerType;
-            const radius = containerType === 'sidecar' ? 10 : 12;
-            const color = node.type === 'sidecarContainer' ? colors.sidecar : node.type === 'externalService' ? colors.external : colors.app;
-            const base = this._computeInitialPosition(podKey, containerType);
+    _colorFor(node) {
+        const styles = getComputedStyle(document.documentElement);
+        switch (node.type) {
+            case 'sidecarContainer':
+                return styles.getPropertyValue('--sidecar').trim() || '#c084fc';
+            case 'externalService':
+                return styles.getPropertyValue('--external').trim() || '#f97316';
+            default:
+                return styles.getPropertyValue('--app').trim() || '#38bdf8';
+        }
+    }
+
+    _initGraph(data) {
+        for (const node of data.nodes || []) {
             const item = {
                 id: node.id,
                 data: node,
-                x: base.x,
-                y: base.y,
-                vx: 0,
-                vy: 0,
-                radius,
-                color
+                x: 0,
+                y: 0,
+                radius: node.type === 'sidecarContainer' ? 10 : 12,
+                color: this._colorFor(node)
             };
             this.nodes.push(item);
-            nodeMap.set(node.id, item);
+            this.nodeMap.set(node.id, item);
         }
-        for (const edge of this.data.edges || []) {
-            const source = nodeMap.get(edge.source);
-            const target = nodeMap.get(edge.target);
+        for (const edge of data.edges || []) {
+            const source = this.nodeMap.get(edge.source);
+            const target = this.nodeMap.get(edge.target);
             if (!source || !target) {
                 continue;
             }
-            const color = edge.kind === 'podLink' ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.45)';
-            this.edges.push({
-                id: edge.id,
-                data: edge,
-                source,
-                target,
-                color
-            });
+            const color = edge.kind === 'podLink'
+                ? 'rgba(148, 163, 184, 0.25)'
+                : 'rgba(148, 163, 184, 0.6)';
+            this.edges.push({ id: edge.id, data: edge, source, target, color });
         }
-    }
-
-    _computeInitialPosition(podKey, containerType) {
-        if (!podKey) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * Math.min(this.width, this.height) * 0.4;
-            return {
-                x: this.width / 2 + Math.cos(angle) * distance,
-                y: this.height / 2 + Math.sin(angle) * distance
-            };
-        }
-        let pod = this._podCenters.get(podKey);
-        if (!pod) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * Math.min(this.width, this.height) * 0.3;
-            pod = { baseX: this.width / 2 + Math.cos(angle) * distance, baseY: this.height / 2 + Math.sin(angle) * distance, count: 0 };
-            this._podCenters.set(podKey, pod);
-        }
-        const index = pod.count++;
-        const offsetAngle = index * (Math.PI / 3);
-        const offsetRadius = containerType === 'sidecar' ? 22 : 30;
-        return {
-            x: pod.baseX + Math.cos(offsetAngle) * offsetRadius,
-            y: pod.baseY + Math.sin(offsetAngle) * offsetRadius
-        };
-    }
-
-    _resolveColors() {
-        const styles = getComputedStyle(document.documentElement);
-        return {
-            app: styles.getPropertyValue('--app').trim() || '#38bdf8',
-            sidecar: styles.getPropertyValue('--sidecar').trim() || '#c084fc',
-            external: styles.getPropertyValue('--external').trim() || '#f97316'
-        };
     }
 
     _bindEvents() {
-        this._onMouseDown = (event) => {
+        this._onClick = (event) => {
             const point = this._eventPoint(event);
             const node = this._hitNode(point.x, point.y);
             if (node) {
-                this.dragging = { node, offsetX: node.x - point.x, offsetY: node.y - point.y };
                 this._select({ type: 'node', data: node.data });
-            } else {
-                const edge = this._hitEdge(point.x, point.y);
-                if (edge) {
-                    this._select({ type: 'edge', data: edge.data });
-                } else {
-                    this._select(null);
-                }
-            }
-        };
-        this._onMouseMove = (event) => {
-            if (!this.dragging) {
                 return;
             }
-            const point = this._eventPoint(event);
-            const { node, offsetX, offsetY } = this.dragging;
-            node.x = point.x + offsetX;
-            node.y = point.y + offsetY;
-            node.vx = 0;
-            node.vy = 0;
+            const edge = this._hitEdge(point.x, point.y);
+            if (edge) {
+                this._select({ type: 'edge', data: edge.data });
+                return;
+            }
+            this._select(null);
         };
-        this._onMouseUp = () => {
-            this.dragging = null;
+        this.canvas.addEventListener('click', this._onClick);
+    }
+
+    _layout() {
+        if (!this.nodes.length) {
+            return;
+        }
+        const groups = new Map();
+        const nodeGroups = new Map();
+
+        for (const node of this.nodes) {
+            const props = node.data.properties || {};
+            let key;
+            let type;
+            let label;
+            if (node.data.type === 'externalService') {
+                const host = props.host || node.data.id;
+                key = `external:${host}`;
+                type = 'external';
+                label = host;
+            } else if (props.pod) {
+                const ns = props.namespace || '';
+                key = `pod:${ns}/${props.pod}`;
+                type = 'pod';
+                label = props.pod;
+            } else {
+                key = `node:${node.id}`;
+                type = 'misc';
+                label = node.data.id;
+            }
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    key,
+                    type,
+                    label,
+                    namespace: props.namespace || '',
+                    nodes: []
+                });
+            }
+            const group = groups.get(key);
+            group.nodes.push(node);
+            nodeGroups.set(node.id, group);
+        }
+
+        const adjacency = new Map();
+        const indegree = new Map();
+        groups.forEach((group, key) => {
+            adjacency.set(key, new Set());
+            indegree.set(key, 0);
+        });
+
+        for (const edge of this.edges) {
+            if (edge.data.kind !== 'traffic') {
+                continue;
+            }
+            const sourceGroup = nodeGroups.get(edge.source.id);
+            const targetGroup = nodeGroups.get(edge.target.id);
+            if (!sourceGroup || !targetGroup) {
+                continue;
+            }
+            if (sourceGroup.key === targetGroup.key) {
+                continue;
+            }
+            const neighbours = adjacency.get(sourceGroup.key);
+            if (!neighbours.has(targetGroup.key)) {
+                neighbours.add(targetGroup.key);
+                indegree.set(targetGroup.key, indegree.get(targetGroup.key) + 1);
+            }
+        }
+
+        const queue = [];
+        indegree.forEach((value, key) => {
+            if (value === 0) {
+                queue.push(key);
+            }
+        });
+
+        const layerMap = new Map();
+        while (queue.length) {
+            const key = queue.shift();
+            const currentLayer = layerMap.get(key) ?? 0;
+            const nextKeys = adjacency.get(key) || new Set();
+            if (!layerMap.has(key)) {
+                layerMap.set(key, currentLayer);
+            }
+            nextKeys.forEach((next) => {
+                const proposedLayer = currentLayer + 1;
+                const existing = layerMap.get(next);
+                if (existing === undefined || proposedLayer > existing) {
+                    layerMap.set(next, proposedLayer);
+                }
+                const remaining = indegree.get(next) - 1;
+                indegree.set(next, remaining);
+                if (remaining === 0) {
+                    queue.push(next);
+                }
+            });
+        }
+
+        let maxLayer = 0;
+        groups.forEach((group, key) => {
+            if (!layerMap.has(key)) {
+                layerMap.set(key, 0);
+            }
+            maxLayer = Math.max(maxLayer, layerMap.get(key));
+        });
+
+        const layers = new Map();
+        layerMap.forEach((layer, key) => {
+            if (!layers.has(layer)) {
+                layers.set(layer, []);
+            }
+            layers.get(layer).push(groups.get(key));
+        });
+        layers.forEach((list) => list.sort((a, b) => a.label.localeCompare(b.label)));
+
+        const layerCount = maxLayer + 1;
+        const marginX = 140;
+        const marginY = 100;
+        const usableWidth = Math.max(this.width - marginX * 2, 200);
+        const usableHeight = Math.max(this.height - marginY * 2, 200);
+        const layerSpacing = layerCount === 1 ? 0 : usableWidth / (layerCount - 1);
+
+        layers.forEach((groupList, layer) => {
+            const x = marginX + layerSpacing * layer;
+            const count = groupList.length;
+            const stepY = count === 1 ? 0 : usableHeight / (count - 1);
+            groupList.forEach((group, index) => {
+                let y;
+                if (count === 1) {
+                    y = marginY + usableHeight / 2;
+                } else {
+                    y = marginY + stepY * index;
+                }
+                this._positionGroup(group, x, y);
+            });
+        });
+
+        this.groups = groups;
+        this.nodeGroups = nodeGroups;
+    }
+
+    _positionGroup(group, centerX, centerY) {
+        const verticalSpacing = 26;
+        const appNodes = group.nodes.filter((node) => node.data.type === 'appContainer');
+        const sidecarNodes = group.nodes.filter((node) => node.data.type === 'sidecarContainer');
+        const otherNodes = group.nodes.filter((node) => node.data.type !== 'appContainer' && node.data.type !== 'sidecarContainer');
+
+        const placeColumn = (nodes, columnX) => {
+            if (!nodes.length) {
+                return;
+            }
+            const startY = centerY - ((nodes.length - 1) * verticalSpacing) / 2;
+            nodes.forEach((node, idx) => {
+                node.x = columnX;
+                node.y = startY + idx * verticalSpacing;
+            });
         };
-        this.canvas.addEventListener('mousedown', this._onMouseDown);
-        window.addEventListener('mousemove', this._onMouseMove);
-        window.addEventListener('mouseup', this._onMouseUp);
+
+        if (group.type === 'pod') {
+            placeColumn(appNodes, centerX - 34);
+            placeColumn(sidecarNodes, centerX + 34);
+            placeColumn(otherNodes, centerX);
+        } else {
+            placeColumn(group.nodes, centerX);
+        }
+
+        const xs = group.nodes.map((n) => n.x);
+        const ys = group.nodes.map((n) => n.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        group.box = {
+            x: minX - 28,
+            y: minY - 34,
+            width: (maxX - minX) + 56,
+            height: (maxY - minY) + 68
+        };
+    }
+
+    _draw() {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.save();
+        ctx.font = '12px "Segoe UI", sans-serif';
+        ctx.textBaseline = 'top';
+        this.groups.forEach((group) => {
+            if (group.type !== 'pod' || !group.box) {
+                return;
+            }
+            ctx.save();
+            ctx.fillStyle = 'rgba(30, 64, 175, 0.08)';
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([6, 6]);
+            ctx.fillRect(group.box.x, group.box.y, group.box.width, group.box.height);
+            ctx.strokeRect(group.box.x, group.box.y, group.box.width, group.box.height);
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText(group.label, group.box.x + 4, group.box.y - 16);
+            ctx.restore();
+        });
+        ctx.restore();
+
+        const selectedNodeId = this.selected?.type === 'node' ? this.selected.data.id : null;
+        const selectedEdgeId = this.selected?.type === 'edge' ? this.selected.data.id : null;
+
+        for (const edge of this.edges) {
+            ctx.beginPath();
+            const isSelected = edge.id === selectedEdgeId;
+            ctx.globalAlpha = edge.data.kind === 'podLink' ? 0.35 : 0.9;
+            ctx.strokeStyle = isSelected ? '#fbbf24' : edge.color;
+            ctx.lineWidth = isSelected ? 2.6 : (edge.data.kind === 'podLink' ? 1 : 1.8);
+            ctx.moveTo(edge.source.x, edge.source.y);
+            ctx.lineTo(edge.target.x, edge.target.y);
+            ctx.stroke();
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.font = '11px "Segoe UI", sans-serif';
+        ctx.textBaseline = 'middle';
+        for (const node of this.nodes) {
+            const isSelected = node.id === selectedNodeId;
+            ctx.beginPath();
+            ctx.fillStyle = node.color;
+            ctx.strokeStyle = isSelected ? '#fbbf24' : '#0f172a';
+            ctx.lineWidth = 2;
+            ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            const displayName = node.data.properties?.displayName || node.data.properties?.container || node.data.id;
+            ctx.fillStyle = '#cbd5f5';
+            ctx.fillText(displayName, node.x + node.radius + 8, node.y);
+        }
     }
 
     _eventPoint(event) {
@@ -314,112 +499,7 @@ class ForceGraph {
         if (this.onSelect) {
             this.onSelect(item);
         }
-    }
-
-    _run() {
-        const step = () => {
-            this._tick();
-            this._draw();
-            this._raf = requestAnimationFrame(step);
-        };
-        step();
-    }
-
-    _tick() {
-        const repulsion = 5000;
-        const spring = 0.012;
-        const idealLength = 140;
-        for (let i = 0; i < this.nodes.length; i++) {
-            const nodeA = this.nodes[i];
-            for (let j = i + 1; j < this.nodes.length; j++) {
-                const nodeB = this.nodes[j];
-                let dx = nodeB.x - nodeA.x;
-                let dy = nodeB.y - nodeA.y;
-                let distSq = dx * dx + dy * dy;
-                if (distSq === 0) {
-                    distSq = 0.01;
-                }
-                const force = repulsion / distSq;
-                const distance = Math.sqrt(distSq);
-                dx /= distance;
-                dy /= distance;
-                nodeA.vx -= force * dx;
-                nodeA.vy -= force * dy;
-                nodeB.vx += force * dx;
-                nodeB.vy += force * dy;
-            }
-        }
-        for (const edge of this.edges) {
-            if (edge.data.kind === 'podLink') {
-                continue;
-            }
-            const { source, target } = edge;
-            let dx = target.x - source.x;
-            let dy = target.y - source.y;
-            const distance = Math.sqrt(dx * dx + dy * dy) || 0.01;
-            const displacement = distance - idealLength;
-            const force = spring * displacement;
-            dx /= distance;
-            dy /= distance;
-            source.vx += force * dx;
-            source.vy += force * dy;
-            target.vx -= force * dx;
-            target.vy -= force * dy;
-        }
-        for (const node of this.nodes) {
-            if (this.dragging && this.dragging.node === node) {
-                continue;
-            }
-            node.vx *= 0.85;
-            node.vy *= 0.85;
-            node.x += node.vx;
-            node.y += node.vy;
-            const margin = node.radius + 24;
-            if (node.x < margin) {
-                node.x = margin;
-                node.vx *= -0.5;
-            } else if (node.x > this.width - margin) {
-                node.x = this.width - margin;
-                node.vx *= -0.5;
-            }
-            if (node.y < margin) {
-                node.y = margin;
-                node.vy *= -0.5;
-            } else if (node.y > this.height - margin) {
-                node.y = this.height - margin;
-                node.vy *= -0.5;
-            }
-        }
-    }
-
-    _draw() {
-        const ctx = this.ctx;
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        ctx.lineWidth = 1.5;
-        for (const edge of this.edges) {
-            ctx.globalAlpha = edge.data.kind === 'podLink' ? 0.4 : 0.9;
-            ctx.strokeStyle = this.selected?.type === 'edge' && this.selected.data.id === edge.id ? '#fbbf24' : edge.color;
-            ctx.beginPath();
-            ctx.moveTo(edge.source.x, edge.source.y);
-            ctx.lineTo(edge.target.x, edge.target.y);
-            ctx.stroke();
-        }
-        ctx.globalAlpha = 1;
-        ctx.font = '11px "Segoe UI", sans-serif';
-        ctx.textBaseline = 'middle';
-        for (const node of this.nodes) {
-            const isSelected = this.selected?.type === 'node' && this.selected.data.id === node.id;
-            ctx.beginPath();
-            ctx.fillStyle = node.color;
-            ctx.strokeStyle = isSelected ? '#fbbf24' : '#0f172a';
-            ctx.lineWidth = 2;
-            ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            const displayName = node.data.properties?.displayName || node.data.properties?.container || node.data.id;
-            ctx.fillStyle = '#cbd5f5';
-            ctx.fillText(displayName, node.x + node.radius + 6, node.y);
-        }
+        this._draw();
     }
 }
 
