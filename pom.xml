@@ -19,7 +19,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <kubernetes.client.version>18.0.0</kubernetes.client.version>
+        <kubernetes.client.version>24.0.0</kubernetes.client.version>
     </properties>
 
     <dependencies>

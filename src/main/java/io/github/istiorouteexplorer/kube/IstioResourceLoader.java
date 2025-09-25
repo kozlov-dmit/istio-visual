@@ -78,22 +78,7 @@ public class IstioResourceLoader {
             String namespace,
             String plural
     ) throws ApiException {
-        Object response = customObjectsApi.listNamespacedCustomObject(
-                group,
-                version,
-                namespace,
-                plural,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                false
-        );
+        Object response = customObjectsApi.listNamespacedCustomObject(group, version, namespace, plural).execute();
         Map<String, Object> asMap = mapper.convertValue(response, MAP_TYPE);
         Object items = asMap.get("items");
         if (items == null) {
@@ -103,40 +88,17 @@ public class IstioResourceLoader {
     }
 
     private List<Map<String, Object>> listServices(String namespace) throws ApiException {
-        var response = coreV1Api.listNamespacedService(
-                namespace,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                false
-        );
+        var response = coreV1Api.listNamespacedService(namespace).execute();
         List<Map<String, Object>> result = new ArrayList<>();
         response.getItems().forEach(item -> result.add(mapper.convertValue(item, MAP_TYPE)));
         return result;
     }
 
     private List<Map<String, Object>> listPods(String namespace) throws ApiException {
-        var response = coreV1Api.listNamespacedPod(
-                namespace,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                false
-        );
+        var response = coreV1Api.listNamespacedPod(namespace).execute();
         List<Map<String, Object>> result = new ArrayList<>();
         response.getItems().forEach(item -> result.add(mapper.convertValue(item, MAP_TYPE)));
         return result;
     }
 }
+
