@@ -1,6 +1,6 @@
 # Istio Route Explorer (Java Edition)
 
-Istio Route Explorer is a Spring Boot 3 / Java 21 service that reads Kubernetes and Istio resources in a namespace, builds a routing graph, and serves it through both a JSON API and an interactive web UI. Supply a kubeconfig path when running locally to connect to your cluster. The UI lets you inspect every node/edge and see the raw configuration behind it.
+Istio Route Explorer is a Spring Boot 3 / Java 21 service that reads Kubernetes and Istio resources in a namespace, builds a routing graph, and serves it through both a JSON API and an interactive web UI. Supply a kubeconfig path when running locally to connect to your cluster. The UI now renders container-level packet routes: application containers, their Istio sidecars, and external services are visualised so you can follow how traffic moves inside the namespace and to outbound dependencies.
 
 ## Build & Run Locally
 
@@ -116,4 +116,5 @@ Errors when contacting the Kubernetes API yield `502 Bad Gateway` with a JSON bo
 - Use `kubectl proxy` or `kind` to expose a kube-apiserver endpoint locally and point `--app.kube-config` at your kubeconfig.
 - To extend the graph (e.g. include Policies), attach additional resource readers in `IstioResourceLoader` and enrich the node `resources` list in `GraphBuilder`.
 - The frontend runs without a build step; edit the files in `src/main/resources/static` and reload your browser while the Spring Boot dev server is running.
+
 

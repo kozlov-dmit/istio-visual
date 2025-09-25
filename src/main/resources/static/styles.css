@@ -2,11 +2,10 @@
     color-scheme: light dark;
     --bg: #0f172a;
     --fg: #e2e8f0;
-    --service: #22c55e;
-    --host: #38bdf8;
-    --service-entry: #ec4899;
-    --workload: #f97316;
-    --edge: rgba(148, 163, 184, 0.6);
+    --app: #38bdf8;
+    --sidecar: #c084fc;
+    --external: #f97316;
+    --link: rgba(148, 163, 184, 0.6);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
@@ -72,7 +71,7 @@ body {
 
 .layout {
     display: grid;
-    grid-template-columns: 1fr 24rem;
+    grid-template-columns: 1fr 26rem;
     flex: 1 1 auto;
     min-height: 0;
 }
@@ -94,9 +93,9 @@ body {
     bottom: 1rem;
     left: 1rem;
     background: rgba(15, 23, 42, 0.75);
-    padding: 0.5rem 0.75rem;
+    padding: 0.6rem 0.9rem;
     border-radius: 6px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     display: flex;
     gap: 1rem;
 }
@@ -109,10 +108,9 @@ body {
     margin-right: 0.35rem;
 }
 
-.legend-dot.service { background: var(--service); }
-.legend-dot.host { background: var(--host); }
-.legend-dot.service-entry { background: var(--service-entry); }
-.legend-dot.workload { background: var(--workload); }
+.legend-dot.app { background: var(--app); }
+.legend-dot.sidecar { background: var(--sidecar); }
+.legend-dot.external { background: var(--external); }
 
 .details-panel {
     background: rgba(15, 23, 42, 0.82);

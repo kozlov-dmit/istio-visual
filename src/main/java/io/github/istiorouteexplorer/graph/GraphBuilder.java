@@ -24,231 +24,248 @@ import org.springframework.stereotype.Component;
 @Component
 public class GraphBuilder {
 
-    public GraphResponse build(ResourceCollection resources) {
-        GraphAccumulator accumulator = new GraphAccumulator(resources);
-        accumulator.process();
-        return accumulator.toResponse();
+    public GraphResponse build(ResourceCollection collection) {
+        return new Context(collection).build();
     }
 
-    private static final class GraphAccumulator {
+    private static final class Context {
         private final ResourceCollection collection;
-        private final Map<String, NodeBuilder> nodes = new LinkedHashMap<>();
+        private final Map<String, GraphNode> nodeMap = new LinkedHashMap<>();
         private final List<GraphEdge> edges = new ArrayList<>();
         private final List<String> warnings = new ArrayList<>();
         private final ServiceIndex serviceIndex;
-        private final DestinationRuleIndex destinationRuleIndex;
+        private final ExternalServiceIndex externalServiceIndex;
+        private final Map<String, PodRecord> podRecords = new LinkedHashMap<>();
+        private ServicePodsIndex servicePodsIndex;
 
-        private GraphAccumulator(ResourceCollection collection) {
+        Context(ResourceCollection collection) {
             this.collection = collection;
             this.serviceIndex = new ServiceIndex(collection);
-            this.destinationRuleIndex = new DestinationRuleIndex(collection);
+            this.externalServiceIndex = new ExternalServiceIndex(collection.primary());
         }
 
-        private void process() {
-            NamespaceResources primary = collection.primary();
-            primary.serviceEntries().forEach(this::processServiceEntry);
-            primary.workloadEntries().forEach(this::processWorkloadEntry);
-            primary.virtualServices().forEach(vs -> processVirtualService(vs, primary.namespace()));
-        }
-
-        private GraphResponse toResponse() {
-            List<GraphNode> graphNodes = nodes.values().stream().map(NodeBuilder::build).toList();
+        GraphResponse build() {
+            registerPods();
+            this.servicePodsIndex = new ServicePodsIndex(serviceIndex, podRecords);
+            linkContainerPairs();
+            processVirtualServices();
+            List<GraphNode> nodes = new ArrayList<>(nodeMap.values());
             Map<String, Object> summary = Map.of(
-                    "nodes", graphNodes.size(),
+                    "nodes", nodes.size(),
                     "edges", edges.size(),
-                    "virtualServices", collection.primary().virtualServices().size(),
-                    "destinationRules", collection.primary().destinationRules().size(),
-                    "serviceEntries", collection.primary().serviceEntries().size()
+                    "pods", podRecords.size(),
+                    "virtualServices", collection.primary().virtualServices().size()
             );
-            return new GraphResponse(collection.primary().namespace(), Instant.now(), summary, graphNodes, edges, warnings);
+            return new GraphResponse(collection.primary().namespace(), Instant.now(), summary, nodes, edges, warnings);
         }
 
-        private void processServiceEntry(Map<String, Object> serviceEntry) {
-            Map<String, Object> metadata = mapValue(serviceEntry, "metadata");
-            Map<String, Object> spec = mapValue(serviceEntry, "spec");
-            if (spec == null) {
-                warnings.add("ServiceEntry missing spec: " + metadata);
-                return;
-            }
-            String namespace = stringValue(metadata, "namespace", collection.primary().namespace());
-            String name = stringValue(metadata, "name", "service-entry");
-            String nodeId = "serviceEntry:%s/%s".formatted(namespace, name);
-            NodeBuilder node = nodes.computeIfAbsent(nodeId, id -> new NodeBuilder(id, "serviceEntry"));
-            node.put("namespace", namespace);
-            node.put("name", name);
-            node.put("resource", Map.of(
-                    "kind", "ServiceEntry",
-                    "metadata", metadata,
-                    "spec", spec
-            ));
-            List<String> hosts = listString(spec.get("hosts"));
-            node.put("hosts", hosts);
-            for (String host : hosts) {
-                NodeBuilder hostNode = ensureHostNode(host, namespace, null);
-                hostNode.addResource(Map.of(
-                        "kind", "ServiceEntry",
-                        "name", name,
-                        "namespace", namespace,
-                        "spec", spec
-                ));
-                String edgeId = "%s->%s".formatted(nodeId, hostNode.id);
-                Map<String, Object> props = Map.of(
-                        "kind", "serviceEntryHost",
-                        "serviceEntry", Map.of("name", name, "namespace", namespace)
-                );
-                edges.add(new GraphEdge(edgeId, "serviceEntryHost", nodeId, hostNode.id, props));
-            }
-        }
-
-        private void processWorkloadEntry(Map<String, Object> workloadEntry) {
-            Map<String, Object> metadata = mapValue(workloadEntry, "metadata");
-            Map<String, Object> spec = mapValue(workloadEntry, "spec");
-            String namespace = stringValue(metadata, "namespace", collection.primary().namespace());
-            String name = stringValue(metadata, "name", "workload-entry");
-            String nodeId = "workloadEntry:%s/%s".formatted(namespace, name);
-            NodeBuilder node = nodes.computeIfAbsent(nodeId, id -> new NodeBuilder(id, "workloadEntry"));
-            node.put("namespace", namespace);
-            node.put("name", name);
-            node.put("resource", Map.of(
-                    "kind", "WorkloadEntry",
-                    "metadata", metadata,
-                    "spec", spec
-            ));
-        }
-
-        private void processVirtualService(Map<String, Object> virtualService, String defaultNamespace) {
-            Map<String, Object> metadata = mapValue(virtualService, "metadata");
-            Map<String, Object> spec = mapValue(virtualService, "spec");
-            if (spec == null) {
-                warnings.add("VirtualService missing spec: " + metadata);
-                return;
-            }
-            String namespace = stringValue(metadata, "namespace", defaultNamespace);
-            String name = stringValue(metadata, "name", "virtual-service");
-            List<String> hosts = listString(spec.get("hosts"));
-            if (hosts.isEmpty()) {
-                warnings.add("VirtualService %s/%s has no hosts".formatted(namespace, name));
-            }
-            List<NodeBuilder> sourceNodes = hosts.stream()
-                    .map(host -> ensureHostNode(host, namespace, virtualService))
-                    .toList();
-            Map<String, Object> vsInfo = Map.of(
-                    "kind", "VirtualService",
-                    "name", name,
-                    "namespace", namespace,
-                    "spec", spec
-            );
-            sourceNodes.forEach(node -> node.addResource(vsInfo));
-            processRouteList("http", listOfMaps(spec.get("http")), namespace, name, sourceNodes, vsInfo);
-            processRouteList("tcp", listOfMaps(spec.get("tcp")), namespace, name, sourceNodes, vsInfo);
-            processRouteList("tls", listOfMaps(spec.get("tls")), namespace, name, sourceNodes, vsInfo);
-        }
-
-        private void processRouteList(
-                String protocol,
-                List<Map<String, Object>> routes,
-                String namespace,
-                String virtualServiceName,
-                List<NodeBuilder> sources,
-                Map<String, Object> vsInfo
-        ) {
-            for (int routeIndex = 0; routeIndex < routes.size(); routeIndex++) {
-                Map<String, Object> route = routes.get(routeIndex);
-                List<Map<String, Object>> destinations = extractDestinations(route);
-                if (destinations.isEmpty()) {
-                    warnings.add("VirtualService %s/%s %s route #%d has no destinations".formatted(namespace, virtualServiceName, protocol, routeIndex));
+        private void registerPods() {
+            for (Map<String, Object> pod : collection.primary().pods()) {
+                Map<String, Object> metadata = asMap(pod.get("metadata"));
+                Map<String, Object> spec = asMap(pod.get("spec"));
+                Map<String, Object> status = asMap(pod.get("status"));
+                String namespace = Objects.toString(metadata.getOrDefault("namespace", collection.primary().namespace()));
+                String podName = Objects.toString(metadata.get("name"), null);
+                if (podName == null) {
                     continue;
                 }
-                for (int destIndex = 0; destIndex < destinations.size(); destIndex++) {
-                    Map<String, Object> destination = destinations.get(destIndex);
-                    Map<String, Object> destSpec = mapValue(destination, "destination");
-                    if (destSpec == null || !destSpec.containsKey("host")) {
-                        warnings.add("VirtualService %s/%s %s route #%d missing host".formatted(namespace, virtualServiceName, protocol, routeIndex));
-                        continue;
+                Map<String, String> labels = asStringMap(metadata.get("labels"));
+                List<Map<String, Object>> containersSpec = listOfMaps(spec.get("containers"));
+                List<ContainerRecord> containers = new ArrayList<>();
+                for (Map<String, Object> container : containersSpec) {
+                    String containerName = Objects.toString(container.get("name"), "container");
+                    String image = Objects.toString(container.get("image"), "");
+                    boolean sidecar = isSidecarContainer(pod, containerName, image);
+                    String nodeId = "container:%s/%s/%s".formatted(namespace, podName, containerName);
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    properties.put("pod", podName);
+                    properties.put("namespace", namespace);
+                    properties.put("container", containerName);
+                    properties.put("containerType", sidecar ? "sidecar" : "app");
+                    properties.put("image", image);
+                    properties.put("displayName", containerName + "@" + podName);
+                    properties.put("labels", labels);
+                    if (!status.isEmpty()) {
+                        properties.put("status", status);
                     }
-                    String host = destSpec.get("host").toString();
-                    String destNamespace = destSpec.getOrDefault("subsetNamespace", namespace).toString();
-                    NodeBuilder target = ensureHostNode(host, destNamespace, null);
-                    target.addResource(Map.of(
-                            "kind", "Destination",
-                            "viaVirtualService", virtualServiceName,
-                            "namespace", destNamespace,
-                            "config", destSpec
-                    ));
-                    Map<String, Object> edgeProps = new LinkedHashMap<>();
-                    edgeProps.put("protocol", protocol);
-                    edgeProps.put("virtualService", vsInfo);
-                    edgeProps.put("route", route);
-                    edgeProps.put("destination", destination);
-                    String subset = destSpec.containsKey("subset") ? destSpec.get("subset").toString() : null;
-                    destinationRuleIndex.findPolicy(host, destNamespace, subset).ifPresent(policy -> edgeProps.put("trafficPolicy", policy));
-                    String edgeSuffix = hash(protocol + virtualServiceName + routeIndex + destIndex + host + destNamespace);
-                    for (NodeBuilder source : sources) {
-                        String edgeId = "%s->%s:%s".formatted(source.id, target.id, edgeSuffix);
-                        edges.add(new GraphEdge(edgeId, "traffic", source.id, target.id, edgeProps));
+                    GraphNode node = new GraphNode(nodeId, sidecar ? "sidecarContainer" : "appContainer", properties);
+                    nodeMap.put(nodeId, node);
+                    containers.add(new ContainerRecord(nodeId, namespace, podName, containerName, sidecar));
+                }
+                podRecords.put(namespace + ":" + podName, new PodRecord(namespace, podName, labels, containers));
+            }
+        }
+
+        private void linkContainerPairs() {
+            for (PodRecord pod : podRecords.values()) {
+                List<ContainerRecord> apps = pod.containers().stream().filter(c -> !c.sidecar()).toList();
+                List<ContainerRecord> sidecars = pod.containers().stream().filter(ContainerRecord::sidecar).toList();
+                if (apps.isEmpty() || sidecars.isEmpty()) {
+                    continue;
+                }
+                for (ContainerRecord app : apps) {
+                    for (ContainerRecord sidecar : sidecars) {
+                        String edgeId = "%s->%s:%s".formatted(app.nodeId(), sidecar.nodeId(), hash(app.nodeId() + sidecar.nodeId()));
+                        Map<String, Object> metadata = Map.of(
+                                "kind", "podLink",
+                                "pod", pod.podName(),
+                                "namespace", pod.namespace()
+                        );
+                        edges.add(new GraphEdge(edgeId, "podLink", app.nodeId(), sidecar.nodeId(), metadata));
                     }
                 }
             }
         }
 
-        private NodeBuilder ensureHostNode(String rawHost, String namespace, Map<String, Object> owningResource) {
-            String canonical = canonicalHost(rawHost, namespace);
-            String nodeId = "host:" + canonical;
-            ServiceIndex.ServiceRecord service = serviceIndex.lookup(canonical);
-            NodeBuilder node = nodes.computeIfAbsent(nodeId, id -> new NodeBuilder(id, service != null ? "service" : "host"));
-            node.put("host", canonical);
-            node.put("namespace", service != null ? service.namespace() : namespace);
-            if (service != null) {
-                node.put("service", service.name());
-                node.put("selectors", service.selectors());
-                node.addResource(Map.of(
-                        "kind", "Service",
-                        "name", service.name(),
-                        "namespace", service.namespace(),
-                        "spec", service.spec()
-                ));
+        private void processVirtualServices() {
+            for (Map<String, Object> vs : collection.primary().virtualServices()) {
+                Map<String, Object> metadata = asMap(vs.get("metadata"));
+                Map<String, Object> spec = asMap(vs.get("spec"));
+                if (spec.isEmpty()) {
+                    warnings.add("VirtualService missing spec: " + metadata);
+                    continue;
+                }
+                String namespace = Objects.toString(metadata.getOrDefault("namespace", collection.primary().namespace()));
+                String name = Objects.toString(metadata.get("name"), "virtualService");
+                List<String> hosts = listOfStrings(spec.get("hosts"));
+                List<ContainerRecord> sourceContainers = containersForHosts(hosts, namespace, true);
+                if (sourceContainers.isEmpty()) {
+                    sourceContainers = containersForHosts(hosts, namespace, false);
+                }
+                if (sourceContainers.isEmpty()) {
+                    warnings.add("VirtualService %s/%s has no matching source pods".formatted(namespace, name));
+                }
+                List<Map<String, Object>> routes = new ArrayList<>();
+                routes.addAll(listOfMaps(spec.get("http")));
+                routes.addAll(listOfMaps(spec.get("tcp")));
+                routes.addAll(listOfMaps(spec.get("tls")));
+                if (routes.isEmpty()) {
+                    warnings.add("VirtualService %s/%s defines no routes".formatted(namespace, name));
+                    continue;
+                }
+                for (Map<String, Object> route : routes) {
+                    handleRoute(namespace, name, route, sourceContainers);
+                }
             }
-            if (owningResource != null) {
-                node.addResource(Map.of(
-                        "kind", owningResource.getOrDefault("kind", "Resource"),
-                        "resource", owningResource
-                ));
+        }
+
+        private void handleRoute(String namespace, String virtualServiceName, Map<String, Object> route, List<ContainerRecord> sources) {
+            List<Map<String, Object>> destinations = extractDestinations(route);
+            if (destinations.isEmpty()) {
+                warnings.add("VirtualService %s/%s route has no destinations".formatted(namespace, virtualServiceName));
+                return;
             }
+            for (Map<String, Object> destination : destinations) {
+                Map<String, Object> destSpec = asMap(destination.get("destination"));
+                if (destSpec.isEmpty() || !destSpec.containsKey("host")) {
+                    warnings.add("VirtualService %s/%s destination missing host".formatted(namespace, virtualServiceName));
+                    continue;
+                }
+                String host = Objects.toString(destSpec.get("host"));
+                String destNamespace = Objects.toString(destSpec.getOrDefault("subsetNamespace", namespace));
+                String subset = destSpec.containsKey("subset") ? Objects.toString(destSpec.get("subset")) : null;
+                List<ContainerRecord> targets = containersForHost(host, destNamespace, true);
+                if (targets.isEmpty()) {
+                    targets = containersForHost(host, destNamespace, false);
+                }
+                if (targets.isEmpty()) {
+                    GraphNode external = ensureExternalNode(host, destNamespace);
+                    connectToExternal(sources, external, route, virtualServiceName, namespace, host);
+                } else {
+                    connectContainers(sources, targets, route, virtualServiceName, namespace, host, destNamespace, subset);
+                }
+            }
+        }
+
+        private void connectContainers(
+                List<ContainerRecord> sources,
+                List<ContainerRecord> targets,
+                Map<String, Object> route,
+                String virtualServiceName,
+                String vsNamespace,
+                String destHost,
+                String destNamespace,
+                String subset
+        ) {
+            if (sources.isEmpty() || targets.isEmpty()) {
+                return;
+            }
+            for (ContainerRecord source : sources) {
+                for (ContainerRecord target : targets) {
+                    Map<String, Object> metadata = new LinkedHashMap<>();
+                    metadata.put("virtualService", Map.of("name", virtualServiceName, "namespace", vsNamespace));
+                    metadata.put("route", route);
+                    metadata.put("destinationHost", destHost);
+                    metadata.put("destinationNamespace", destNamespace);
+                    if (subset != null) {
+                        metadata.put("subset", subset);
+                    }
+                    serviceIndex.findTrafficPolicy(destHost, destNamespace, subset).ifPresent(policy -> metadata.put("trafficPolicy", policy));
+                    String edgeId = "%s->%s:%s".formatted(source.nodeId(), target.nodeId(), hash(source.nodeId() + target.nodeId() + destHost));
+                    edges.add(new GraphEdge(edgeId, "traffic", source.nodeId(), target.nodeId(), metadata));
+                }
+            }
+        }
+
+        private void connectToExternal(
+                List<ContainerRecord> sources,
+                GraphNode external,
+                Map<String, Object> route,
+                String virtualServiceName,
+                String namespace,
+                String destHost
+        ) {
+            if (sources.isEmpty()) {
+                return;
+            }
+            for (ContainerRecord source : sources) {
+                Map<String, Object> metadata = new LinkedHashMap<>();
+                metadata.put("virtualService", Map.of("name", virtualServiceName, "namespace", namespace));
+                metadata.put("route", route);
+                metadata.put("destinationHost", destHost);
+                metadata.put("external", external.properties());
+                String edgeId = "%s->%s:%s".formatted(source.nodeId(), external.id(), hash(source.nodeId() + external.id() + destHost));
+                edges.add(new GraphEdge(edgeId, "traffic", source.nodeId(), external.id(), metadata));
+            }
+        }
+
+        private List<ContainerRecord> containersForHosts(List<String> hosts, String namespace, boolean preferSidecars) {
+            Set<ContainerRecord> result = new LinkedHashSet<>();
+            for (String host : hosts) {
+                result.addAll(containersForHost(host, namespace, preferSidecars));
+            }
+            return new ArrayList<>(result);
+        }
+
+        private List<ContainerRecord> containersForHost(String host, String namespace, boolean preferSidecars) {
+            if (servicePodsIndex == null) {
+                return List.of();
+            }
+            String canonical = canonicalHost(host, namespace);
+            List<PodRecord> pods = servicePodsIndex.podsForHost(canonical);
+            if (pods.isEmpty()) {
+                return List.of();
+            }
+            return pods.stream()
+                    .flatMap(p -> p.containers().stream())
+                    .filter(preferSidecars ? ContainerRecord::sidecar : c -> true)
+                    .collect(Collectors.toCollection(ArrayList::new));
+        }
+
+        private GraphNode ensureExternalNode(String host, String namespace) {
+            String canonical = canonicalHost(host, namespace);
+            String nodeId = "external:" + canonical;
+            GraphNode existing = nodeMap.get(nodeId);
+            if (existing != null) {
+                return existing;
+            }
+            Map<String, Object> props = new LinkedHashMap<>();
+            props.put("host", canonical);
+            props.put("namespace", namespace);
+            externalServiceIndex.find(host, namespace).ifPresent(entry -> props.put("serviceEntry", entry));
+            GraphNode node = new GraphNode(nodeId, "externalService", props);
+            nodeMap.put(nodeId, node);
             return node;
-        }
-
-        private Map<String, Object> mapValue(Map<String, Object> map, String key) {
-            Object value = map.get(key);
-            if (value instanceof Map<?, ?> subMap) {
-                return castMap(subMap);
-            }
-            return null;
-        }
-
-        private List<Map<String, Object>> listOfMaps(Object value) {
-            if (value instanceof List<?> list) {
-                List<Map<String, Object>> result = new ArrayList<>();
-                for (Object item : list) {
-                    if (item instanceof Map<?, ?> map) {
-                        result.add(castMap(map));
-                    }
-                }
-                return result;
-            }
-            return List.of();
-        }
-
-        private List<String> listString(Object value) {
-            if (value instanceof List<?> list) {
-                List<String> result = new ArrayList<>();
-                for (Object item : list) {
-                    if (item != null) {
-                        result.add(item.toString());
-                    }
-                }
-                return result;
-            }
-            return List.of();
         }
 
         private List<Map<String, Object>> extractDestinations(Map<String, Object> route) {
@@ -258,237 +275,247 @@ public class GraphBuilder {
                 if (value instanceof List<?> list) {
                     for (Object item : list) {
                         if (item instanceof Map<?, ?> map) {
-                            result.add(castMap(map));
+                            result.add(asMap(map));
                         }
                     }
                 }
             }
             Object mirror = route.get("mirror");
             if (mirror instanceof Map<?, ?> map) {
-                result.add(Map.of("destination", castMap(map)));
+                result.add(Map.of("destination", asMap(map)));
             }
             return result;
         }
 
-        private String stringValue(Map<String, Object> map, String key, String fallback) {
-            Object value = map.get(key);
-            return value != null ? value.toString() : fallback;
+        private static boolean isSidecarContainer(Map<String, Object> pod, String containerName, String image) {
+            if (containerName != null && containerName.toLowerCase(Locale.ROOT).contains("istio-proxy")) {
+                return true;
+            }
+            if (image != null && image.contains("istio/proxy")) {
+                return true;
+            }
+            Map<String, Object> metadata = asMap(pod.get("metadata"));
+            Map<String, Object> annotations = asMap(metadata.get("annotations"));
+            return annotations.containsKey("sidecar.istio.io/status");
         }
+    }
 
-        private Map<String, Object> castMap(Map<?, ?> map) {
-            return map.entrySet().stream().collect(Collectors.toMap(e -> Objects.toString(e.getKey()), Map.Entry::getValue));
-        }
+    private record PodRecord(String namespace, String podName, Map<String, String> labels, List<ContainerRecord> containers) {
+    }
 
-        private String canonicalHost(String rawHost, String namespace) {
-            if (rawHost == null || rawHost.isBlank()) {
-                return rawHost;
-            }
-            String host = rawHost.trim().toLowerCase(Locale.ROOT);
-            if (host.equals("mesh")) {
-                return host;
-            }
-            if (host.endsWith(".svc.cluster.local") || host.endsWith(".cluster.local")) {
-                return host;
-            }
-            if (host.endsWith(".svc")) {
-                return host + ".cluster.local";
-            }
-            if (host.contains(".svc.")) {
-                return host;
-            }
-            String[] parts = host.split("\\.");
-            if (parts.length == 1) {
-                return "%s.%s.svc.cluster.local".formatted(host, namespace);
-            }
-            if (parts.length == 2 && parts[1].equals(namespace)) {
-                return "%s.%s.svc.cluster.local".formatted(parts[0], parts[1]);
-            }
-            if (parts.length == 3 && parts[1].equals(namespace) && parts[2].equals("svc")) {
-                return "%s.%s.svc.cluster.local".formatted(parts[0], parts[1]);
-            }
-            return host;
-        }
+    private record ContainerRecord(String nodeId, String namespace, String podName, String containerName, boolean sidecar) {
+    }
 
-        private String hash(String input) {
-            try {
-                MessageDigest digest = MessageDigest.getInstance("SHA-1");
-                byte[] bytes = digest.digest(input.getBytes());
-                return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes).substring(0, 10);
-            } catch (NoSuchAlgorithmException e) {
-                throw new IllegalStateException("SHA-1 algorithm not available", e);
-            }
-        }
+    private static final class ServiceIndex {
+        private final Map<String, ServiceRecord> services = new LinkedHashMap<>();
 
-        private static final class NodeBuilder {
-            private final String id;
-            private final String type;
-            private final Map<String, Object> properties = new LinkedHashMap<>();
-            private final List<Map<String, Object>> resources = new ArrayList<>();
-
-            private NodeBuilder(String id, String type) {
-                this.id = id;
-                this.type = type;
-            }
-
-            private void put(String key, Object value) {
-                if (value != null) {
-                    properties.put(key, value);
-                }
-            }
-
-            private void addResource(Map<String, Object> resource) {
-                if (resource != null && !resource.isEmpty()) {
-                    resources.add(resource);
-                }
-            }
-
-            private GraphNode build() {
-                Map<String, Object> props = new LinkedHashMap<>(properties);
-                if (!resources.isEmpty()) {
-                    props.put("resources", resources);
-                }
-                return new GraphNode(id, type, props);
-            }
-        }
-
-        private static final class ServiceIndex {
-            private final Map<String, ServiceRecord> records = new LinkedHashMap<>();
-
-            private ServiceIndex(ResourceCollection collection) {
-                List<NamespaceResources> all = new ArrayList<>();
-                all.add(collection.primary());
-                all.addAll(collection.extras().values());
-                for (NamespaceResources resources : all) {
-                    for (Map<String, Object> svc : resources.services()) {
-                        Map<String, Object> metadata = castMapSafe(svc.get("metadata"));
-                        Map<String, Object> spec = castMapSafe(svc.get("spec"));
-                        String name = Objects.toString(metadata.get("name"), null);
-                        if (name == null) {
-                            continue;
-                        }
-                        String namespace = Objects.toString(metadata.getOrDefault("namespace", resources.namespace()), resources.namespace());
-                        Map<String, Object> selectors = castMapSafe(spec.get("selector"));
-                        ServiceRecord record = new ServiceRecord(name, namespace, selectors, spec);
-                        Set<String> variants = new LinkedHashSet<>();
-                        variants.add(name);
-                        variants.add("%s.%s".formatted(name, namespace));
-                        variants.add("%s.%s.svc".formatted(name, namespace));
-                        variants.add("%s.%s.svc.cluster.local".formatted(name, namespace));
-                        for (String variant : variants) {
-                            records.put(canonicalStatic(variant, namespace), record);
-                        }
+        ServiceIndex(ResourceCollection collection) {
+            List<NamespaceResources> all = new ArrayList<>();
+            all.add(collection.primary());
+            all.addAll(collection.extras().values());
+            for (NamespaceResources resources : all) {
+                for (Map<String, Object> svc : resources.services()) {
+                    Map<String, Object> metadata = asMap(svc.get("metadata"));
+                    Map<String, Object> spec = asMap(svc.get("spec"));
+                    String name = Objects.toString(metadata.get("name"), null);
+                    if (name == null) {
+                        continue;
+                    }
+                    String namespace = Objects.toString(metadata.getOrDefault("namespace", resources.namespace()), resources.namespace());
+                    Map<String, String> selector = asStringMap(spec.get("selector"));
+                    ServiceRecord record = new ServiceRecord(name, namespace, selector, spec);
+                    for (String variant : canonicalVariants(name, namespace)) {
+                        services.put(variant, record);
                     }
                 }
             }
-
-            private ServiceRecord lookup(String canonicalHost) {
-                return records.get(canonicalHost);
-            }
-
-            private static Map<String, Object> castMapSafe(Object value) {
-                if (value instanceof Map<?, ?> map) {
-                    return map.entrySet().stream().collect(Collectors.toMap(e -> Objects.toString(e.getKey()), Map.Entry::getValue));
-                }
-                return Map.of();
-            }
-
-            private static String canonicalStatic(String host, String namespace) {
-                if (host == null) {
-                    return null;
-                }
-                String normalised = host.trim().toLowerCase(Locale.ROOT);
-                if (normalised.equals("mesh")) {
-                    return normalised;
-                }
-                if (normalised.endsWith(".svc.cluster.local") || normalised.endsWith(".cluster.local")) {
-                    return normalised;
-                }
-                if (normalised.endsWith(".svc")) {
-                    return normalised + ".cluster.local";
-                }
-                if (normalised.contains(".svc.")) {
-                    return normalised;
-                }
-                String[] parts = normalised.split("\\.");
-                if (parts.length == 1) {
-                    return "%s.%s.svc.cluster.local".formatted(normalised, namespace);
-                }
-                if (parts.length == 2 && parts[1].equals(namespace)) {
-                    return "%s.%s.svc.cluster.local".formatted(parts[0], parts[1]);
-                }
-                if (parts.length == 3 && parts[1].equals(namespace) && parts[2].equals("svc")) {
-                    return "%s.%s.svc.cluster.local".formatted(parts[0], parts[1]);
-                }
-                return normalised;
-            }
-
-            private record ServiceRecord(String name, String namespace, Map<String, Object> selectors, Map<String, Object> spec) {
-            }
         }
 
-        private static final class DestinationRuleIndex {
-            private final Map<String, List<Map<String, Object>>> rules = new LinkedHashMap<>();
-
-            private DestinationRuleIndex(ResourceCollection collection) {
-                List<NamespaceResources> all = new ArrayList<>();
-                all.add(collection.primary());
-                all.addAll(collection.extras().values());
-                for (NamespaceResources resources : all) {
-                    for (Map<String, Object> rule : resources.destinationRules()) {
-                        Map<String, Object> spec = castMapSafe(rule.get("spec"));
-                        Object host = spec.get("host");
-                        if (host == null) {
-                            continue;
-                        }
-                        String canonical = ServiceIndex.canonicalStatic(host.toString(), resources.namespace());
-                        rules.computeIfAbsent(canonical, key -> new ArrayList<>()).add(rule);
-                    }
-                }
-            }
-
-            private Optional<Map<String, Object>> findPolicy(String host, String namespace, String subset) {
-                String canonical = ServiceIndex.canonicalStatic(host, namespace);
-                List<Map<String, Object>> byHost = rules.getOrDefault(canonical, List.of());
-                for (Map<String, Object> rule : byHost) {
-                    Map<String, Object> spec = castMapSafe(rule.get("spec"));
-                    if (subset != null) {
-                        List<Map<String, Object>> subsets = listOfMaps(spec.get("subsets"));
-                        for (Map<String, Object> candidate : subsets) {
-                            if (subset.equals(candidate.get("name"))) {
-                                Map<String, Object> policy = castMapSafe(candidate.get("trafficPolicy"));
-                                if (!policy.isEmpty()) {
-                                    return Optional.of(policy);
-                                }
-                            }
-                        }
-                    }
-                    Map<String, Object> policy = castMapSafe(spec.get("trafficPolicy"));
-                    if (!policy.isEmpty()) {
-                        return Optional.of(policy);
-                    }
-                }
+        Optional<Map<String, Object>> findTrafficPolicy(String host, String namespace, String subset) {
+            ServiceRecord record = services.get(canonicalHost(host, namespace));
+            if (record == null) {
                 return Optional.empty();
             }
-
-            private static Map<String, Object> castMapSafe(Object value) {
-                if (value instanceof Map<?, ?> map) {
-                    return map.entrySet().stream().collect(Collectors.toMap(e -> Objects.toString(e.getKey()), Map.Entry::getValue));
-                }
-                return Map.of();
+            Map<String, Object> spec = record.spec();
+            Map<String, Object> trafficPolicy = asMap(spec.get("trafficPolicy"));
+            if (subset == null && !trafficPolicy.isEmpty()) {
+                return Optional.of(trafficPolicy);
             }
-
-            private static List<Map<String, Object>> listOfMaps(Object value) {
-                if (value instanceof List<?> list) {
-                    List<Map<String, Object>> result = new ArrayList<>();
-                    for (Object item : list) {
-                        if (item instanceof Map<?, ?> map) {
-                            result.add(castMapSafe(map));
+            if (subset != null) {
+                for (Map<String, Object> subsetSpec : listOfMaps(spec.get("subsets"))) {
+                    if (subset.equals(subsetSpec.get("name"))) {
+                        Map<String, Object> subsetPolicy = asMap(subsetSpec.get("trafficPolicy"));
+                        if (!subsetPolicy.isEmpty()) {
+                            return Optional.of(subsetPolicy);
                         }
                     }
-                    return result;
                 }
-                return List.of();
             }
+            return Optional.ofNullable(trafficPolicy.isEmpty() ? null : trafficPolicy);
+        }
+
+        Optional<ServiceInfo> serviceInfo(String canonicalHost) {
+            ServiceRecord record = services.get(canonicalHost);
+            if (record == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new ServiceInfo(record.name(), record.namespace(), record.selector(), record.spec()));
+        }
+
+        Set<String> hosts() {
+            return services.keySet();
+        }
+
+        private record ServiceRecord(String name, String namespace, Map<String, String> selector, Map<String, Object> spec) {
+        }
+
+        private record ServiceInfo(String name, String namespace, Map<String, String> selector, Map<String, Object> spec) {
+        }
+    }
+
+    private static final class ServicePodsIndex {
+        private final Map<String, List<PodRecord>> podsByHost = new LinkedHashMap<>();
+
+        ServicePodsIndex(ServiceIndex serviceIndex, Map<String, PodRecord> pods) {
+            for (String host : serviceIndex.hosts()) {
+                serviceIndex.serviceInfo(host).ifPresent(info -> {
+                    List<PodRecord> matched = pods.values().stream()
+                            .filter(p -> p.namespace().equals(info.namespace()))
+                            .filter(p -> matchesSelector(p.labels(), info.selector()))
+                            .toList();
+                    if (!matched.isEmpty()) {
+                        podsByHost.put(host, matched);
+                    }
+                });
+            }
+        }
+
+        List<PodRecord> podsForHost(String canonicalHost) {
+            return podsByHost.getOrDefault(canonicalHost, List.of());
+        }
+
+        private static boolean matchesSelector(Map<String, String> labels, Map<String, String> selector) {
+            if (selector == null || selector.isEmpty()) {
+                return false;
+            }
+            for (Map.Entry<String, String> entry : selector.entrySet()) {
+                if (!Objects.equals(labels.get(entry.getKey()), entry.getValue())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private static final class ExternalServiceIndex {
+        private final Map<String, Map<String, Object>> entries = new LinkedHashMap<>();
+
+        ExternalServiceIndex(NamespaceResources resources) {
+            for (Map<String, Object> serviceEntry : resources.serviceEntries()) {
+                Map<String, Object> spec = asMap(serviceEntry.get("spec"));
+                Map<String, Object> metadata = asMap(serviceEntry.get("metadata"));
+                for (String host : listOfStrings(spec.get("hosts"))) {
+                    entries.put(canonicalHost(host, resources.namespace()), Map.of(
+                            "kind", "ServiceEntry",
+                            "metadata", metadata,
+                            "spec", spec
+                    ));
+                }
+            }
+        }
+
+        Optional<Map<String, Object>> find(String host, String namespace) {
+            return Optional.ofNullable(entries.get(canonicalHost(host, namespace)));
+        }
+    }
+
+    private static Map<String, Object> asMap(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return map.entrySet().stream()
+                    .collect(Collectors.toMap(e -> Objects.toString(e.getKey()), Map.Entry::getValue));
+        }
+        return Map.of();
+    }
+
+    private static Map<String, String> asStringMap(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            return map.entrySet().stream()
+                    .collect(Collectors.toMap(e -> Objects.toString(e.getKey()), e -> Objects.toString(e.getValue())));
+        }
+        return Map.of();
+    }
+
+    private static List<Map<String, Object>> listOfMaps(Object value) {
+        if (value instanceof List<?> list) {
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    result.add(asMap(map));
+                }
+            }
+            return result;
+        }
+        return List.of();
+    }
+
+    private static List<String> listOfStrings(Object value) {
+        if (value instanceof List<?> list) {
+            List<String> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item != null) {
+                    result.add(item.toString());
+                }
+            }
+            return result;
+        }
+        return List.of();
+    }
+
+    private static Set<String> canonicalVariants(String serviceName, String namespace) {
+        Set<String> variants = new LinkedHashSet<>();
+        variants.add(serviceName);
+        variants.add("%s.%s".formatted(serviceName, namespace));
+        variants.add("%s.%s.svc".formatted(serviceName, namespace));
+        variants.add("%s.%s.svc.cluster.local".formatted(serviceName, namespace));
+        return variants.stream().map(host -> canonicalHost(host, namespace)).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private static String canonicalHost(String rawHost, String namespace) {
+        if (rawHost == null || rawHost.isBlank()) {
+            return rawHost;
+        }
+        String host = rawHost.trim().toLowerCase(Locale.ROOT);
+        if (host.equals("mesh")) {
+            return host;
+        }
+        if (host.endsWith(".svc.cluster.local") || host.endsWith(".cluster.local")) {
+            return host;
+        }
+        if (host.endsWith(".svc")) {
+            return host + ".cluster.local";
+        }
+        if (host.contains(".svc.")) {
+            return host;
+        }
+        String[] parts = host.split("\\.");
+        if (parts.length == 1) {
+            return "%s.%s.svc.cluster.local".formatted(host, namespace);
+        }
+        if (parts.length == 2 && parts[1].equals(namespace)) {
+            return "%s.%s.svc.cluster.local".formatted(parts[0], parts[1]);
+        }
+        if (parts.length == 3 && parts[1].equals(namespace) && parts[2].equals("svc")) {
+            return "%s.%s.svc.cluster.local".formatted(parts[0], parts[1]);
+        }
+        return host;
+    }
+
+    private static String hash(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-1");
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(digest.digest(value.getBytes())).substring(0, 10);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-1 algorithm not available", e);
         }
     }
 }

@@ -63,7 +63,8 @@ public class IstioResourceLoader {
                     listNamespacedCustomObject("security.istio.io", "v1beta1", namespace, "authorizationpolicies"),
                     listNamespacedCustomObject("security.istio.io", "v1beta1", namespace, "peerauthentications"),
                     listNamespacedCustomObject("security.istio.io", "v1beta1", namespace, "requestauthentications"),
-                    listServices(namespace)
+                    listServices(namespace),
+                    listPods(namespace)
             );
         } catch (ApiException ex) {
             throw new IOException("Failed to load resources: " + ex.getResponseBody(), ex);
@@ -102,10 +103,40 @@ public class IstioResourceLoader {
     }
 
     private List<Map<String, Object>> listServices(String namespace) throws ApiException {
-        var response = coreV1Api.listNamespacedService(namespace, null, null, null, null, null, null, null, null, null, false);
+        var response = coreV1Api.listNamespacedService(
+                namespace,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+        List<Map<String, Object>> result = new ArrayList<>();
+        response.getItems().forEach(item -> result.add(mapper.convertValue(item, MAP_TYPE)));
+        return result;
+    }
+
+    private List<Map<String, Object>> listPods(String namespace) throws ApiException {
+        var response = coreV1Api.listNamespacedPod(
+                namespace,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                false
+        );
         List<Map<String, Object>> result = new ArrayList<>();
         response.getItems().forEach(item -> result.add(mapper.convertValue(item, MAP_TYPE)));
         return result;
     }
 }
-

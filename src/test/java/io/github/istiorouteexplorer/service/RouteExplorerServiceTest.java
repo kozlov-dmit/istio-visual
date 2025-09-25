@@ -108,6 +108,7 @@ class RouteExplorerServiceTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 List.of()
         );
         return new ResourceCollection(resources, Map.of());
@@ -124,6 +125,7 @@ class RouteExplorerServiceTest {
         );
     }
 }
+
 
 
 

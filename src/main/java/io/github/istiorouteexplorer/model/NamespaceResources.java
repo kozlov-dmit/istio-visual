@@ -15,6 +15,7 @@ public record NamespaceResources(
         List<Map<String, Object>> authorizationPolicies,
         List<Map<String, Object>> peerAuthentications,
         List<Map<String, Object>> requestAuthentications,
-        List<Map<String, Object>> services
+        List<Map<String, Object>> services,
+        List<Map<String, Object>> pods
 ) {
 }

@@ -57,6 +57,23 @@ function updateWarnings(data) {
     }
 }
 
+function cleanResource(resource) {
+    if (Array.isArray(resource)) {
+        return resource.map(cleanResource);
+    }
+    if (resource && typeof resource === 'object') {
+        const result = {};
+        for (const [key, value] of Object.entries(resource)) {
+            if (value === null || value === undefined || value === '') {
+                continue;
+            }
+            result[key] = cleanResource(value);
+        }
+        return result;
+    }
+    return resource;
+}
+
 function updateSelection(info) {
     if (!info) {
         selectionEl.textContent = 'Click a node or edge to inspect';
@@ -64,20 +81,12 @@ function updateSelection(info) {
     }
     if (info.type === 'node') {
         const node = info.data;
-        const resources = (node.properties?.resources || []).map((r) => ({
-            kind: r.kind,
-            name: r.name,
-            namespace: r.namespace,
-            spec: r.spec || r.resource?.spec,
-            resource: r.resource
-        }));
-        selectionEl.textContent = `Node ${node.id}\nType: ${node.type}\n\n` + formatJSON({
-            ...node.properties,
-            resources
-        });
+        const printable = cleanResource(node.properties || {});
+        selectionEl.textContent = `Node ${node.id}\nType: ${node.type}\n\n` + formatJSON(printable);
     } else if (info.type === 'edge') {
         const edge = info.data;
-        selectionEl.textContent = `Edge ${edge.id}\nType: ${edge.kind}\n\n` + formatJSON(edge.properties);
+        const printable = cleanResource(edge);
+        selectionEl.textContent = `Edge ${edge.id}\nType: ${edge.kind}\n\n` + formatJSON(printable);
     }
 }
 
@@ -131,6 +140,7 @@ class ForceGraph {
         this.dragging = null;
         this.width = canvas.width;
         this.height = canvas.height;
+        this._podCenters = new Map();
         this._initGraph();
         this._bindEvents();
         this._run();
@@ -152,15 +162,17 @@ class ForceGraph {
         const colors = this._resolveColors();
         const nodeMap = new Map();
         for (const node of this.data.nodes || []) {
-            const radius = node.type === 'serviceEntry' ? 14 : node.type === 'workloadEntry' ? 9 : 11;
-            const color = colors[node.type] || colors.host;
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * Math.min(this.width, this.height) * 0.3;
+            const properties = node.properties || {};
+            const podKey = properties.pod ? `${properties.namespace || ''}:${properties.pod}` : null;
+            const containerType = properties.containerType;
+            const radius = containerType === 'sidecar' ? 10 : 12;
+            const color = node.type === 'sidecarContainer' ? colors.sidecar : node.type === 'externalService' ? colors.external : colors.app;
+            const base = this._computeInitialPosition(podKey, containerType);
             const item = {
                 id: node.id,
                 data: node,
-                x: this.width / 2 + Math.cos(angle) * distance,
-                y: this.height / 2 + Math.sin(angle) * distance,
+                x: base.x,
+                y: base.y,
                 vx: 0,
                 vy: 0,
                 radius,
@@ -175,23 +187,48 @@ class ForceGraph {
             if (!source || !target) {
                 continue;
             }
+            const color = edge.kind === 'podLink' ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.45)';
             this.edges.push({
                 id: edge.id,
                 data: edge,
                 source,
                 target,
-                color: 'rgba(148,163,184,0.45)'
+                color
             });
         }
+    }
+
+    _computeInitialPosition(podKey, containerType) {
+        if (!podKey) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * Math.min(this.width, this.height) * 0.4;
+            return {
+                x: this.width / 2 + Math.cos(angle) * distance,
+                y: this.height / 2 + Math.sin(angle) * distance
+            };
+        }
+        let pod = this._podCenters.get(podKey);
+        if (!pod) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * Math.min(this.width, this.height) * 0.3;
+            pod = { baseX: this.width / 2 + Math.cos(angle) * distance, baseY: this.height / 2 + Math.sin(angle) * distance, count: 0 };
+            this._podCenters.set(podKey, pod);
+        }
+        const index = pod.count++;
+        const offsetAngle = index * (Math.PI / 3);
+        const offsetRadius = containerType === 'sidecar' ? 22 : 30;
+        return {
+            x: pod.baseX + Math.cos(offsetAngle) * offsetRadius,
+            y: pod.baseY + Math.sin(offsetAngle) * offsetRadius
+        };
     }
 
     _resolveColors() {
         const styles = getComputedStyle(document.documentElement);
         return {
-            service: styles.getPropertyValue('--service').trim() || '#22c55e',
-            host: styles.getPropertyValue('--host').trim() || '#38bdf8',
-            serviceEntry: styles.getPropertyValue('--service-entry').trim() || '#ec4899',
-            workloadEntry: styles.getPropertyValue('--workload').trim() || '#f97316'
+            app: styles.getPropertyValue('--app').trim() || '#38bdf8',
+            sidecar: styles.getPropertyValue('--sidecar').trim() || '#c084fc',
+            external: styles.getPropertyValue('--external').trim() || '#f97316'
         };
     }
 
@@ -291,7 +328,7 @@ class ForceGraph {
     _tick() {
         const repulsion = 5000;
         const spring = 0.012;
-        const idealLength = 130;
+        const idealLength = 140;
         for (let i = 0; i < this.nodes.length; i++) {
             const nodeA = this.nodes[i];
             for (let j = i + 1; j < this.nodes.length; j++) {
@@ -313,6 +350,9 @@ class ForceGraph {
             }
         }
         for (const edge of this.edges) {
+            if (edge.data.kind === 'podLink') {
+                continue;
+            }
             const { source, target } = edge;
             let dx = target.x - source.x;
             let dy = target.y - source.y;
@@ -356,22 +396,29 @@ class ForceGraph {
         const ctx = this.ctx;
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.9;
         for (const edge of this.edges) {
+            ctx.globalAlpha = edge.data.kind === 'podLink' ? 0.4 : 0.9;
             ctx.strokeStyle = this.selected?.type === 'edge' && this.selected.data.id === edge.id ? '#fbbf24' : edge.color;
             ctx.beginPath();
             ctx.moveTo(edge.source.x, edge.source.y);
             ctx.lineTo(edge.target.x, edge.target.y);
             ctx.stroke();
         }
+        ctx.globalAlpha = 1;
+        ctx.font = '11px "Segoe UI", sans-serif';
+        ctx.textBaseline = 'middle';
         for (const node of this.nodes) {
+            const isSelected = this.selected?.type === 'node' && this.selected.data.id === node.id;
             ctx.beginPath();
             ctx.fillStyle = node.color;
-            ctx.strokeStyle = this.selected?.type === 'node' && this.selected.data.id === node.id ? '#fbbf24' : '#0f172a';
+            ctx.strokeStyle = isSelected ? '#fbbf24' : '#0f172a';
             ctx.lineWidth = 2;
             ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
+            const displayName = node.data.properties?.displayName || node.data.properties?.container || node.data.id;
+            ctx.fillStyle = '#cbd5f5';
+            ctx.fillText(displayName, node.x + node.radius + 6, node.y);
         }
     }
 }
