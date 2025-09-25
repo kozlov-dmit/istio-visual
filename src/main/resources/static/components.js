@@ -54,6 +54,106 @@ export function createApp(React, options = {}) {
         );
     }
 
+    function NodeBadge({ node }) {
+        if (node.type === "externalService") {
+            return React.createElement("span", { className: "badge external" }, "External");
+        }
+        if (node.type === "sidecarContainer") {
+            return React.createElement("span", { className: "badge sidecar" }, "Sidecar");
+        }
+        return React.createElement("span", { className: "badge app" }, "App");
+    }
+
+    function describeNode(node) {
+        if (!node) {
+            return [];
+        }
+        const props = node.properties || {};
+        const entries = [];
+        if (props.pod) {
+            entries.push(["Pod", `${props.pod} (${props.namespace})`]);
+        }
+        if (props.container) {
+            entries.push(["Container", props.container]);
+        }
+        if (props.containerType) {
+            entries.push(["Role", props.containerType === "sidecar" ? "Sidecar" : "Application"]);
+        }
+        if (props.image) {
+            entries.push(["Image", props.image]);
+        }
+        if (props.host) {
+            entries.push(["Host", props.host]);
+        }
+        if (props.labels && Object.keys(props.labels).length) {
+            entries.push(["Labels", Object.entries(props.labels).map(([k, v]) => `${k}=${v}`).join(", ")]);
+        }
+        return entries;
+    }
+
+    function describeEdge(edge) {
+        if (!edge) {
+            return [];
+        }
+        const props = edge.properties || {};
+        const entries = [];
+        if (props.destinationHost) {
+            entries.push(["Destination", props.destinationHost]);
+        }
+        if (props.destinationNamespace) {
+            entries.push(["Namespace", props.destinationNamespace]);
+        }
+        if (props.route?.timeout) {
+            entries.push(["Timeout", props.route.timeout]);
+        }
+        if (props.route?.retryPolicy) {
+            entries.push(["Retry policy", JSON.stringify(props.route.retryPolicy)]);
+        }
+        if (props.trafficPolicy) {
+            entries.push(["Traffic policy", JSON.stringify(props.trafficPolicy)]);
+        }
+        if (!entries.length) {
+            entries.push(["Info", "No additional metadata"]);
+        }
+        return entries;
+    }
+
+    function DetailsPanel({ selected }) {
+        if (!selected) {
+            return React.createElement("pre", { className: "details" }, "Click a node or edge to inspect");
+        }
+        if (selected.type === "node") {
+            const entries = describeNode(selected.data);
+            return React.createElement(
+                "div",
+                { className: "details" },
+                React.createElement("h3", null, selected.data.properties?.displayName ?? selected.data.id),
+                React.createElement("div", { className: "details-grid" },
+                    entries.map(([label, value]) =>
+                        React.createElement("div", { key: label, className: "details-row" },
+                            React.createElement("span", { className: "details-label" }, label),
+                            React.createElement("span", { className: "details-value" }, value)
+                        )
+                    )
+                )
+            );
+        }
+        const entries = describeEdge(selected.data);
+        return React.createElement(
+            "div",
+            { className: "details" },
+            React.createElement("h3", null, "Traffic Edge"),
+            React.createElement("div", { className: "details-grid" },
+                entries.map(([label, value]) =>
+                    React.createElement("div", { key: label, className: "details-row" },
+                        React.createElement("span", { className: "details-label" }, label),
+                        React.createElement("span", { className: "details-value" }, value)
+                    )
+                )
+            )
+        );
+    }
+
     function TopologyDiagram({ layout, selectedNodeId, selectedEdgeId, onSelect }) {
         if (!layout || !layout.nodes.length) {
             return React.createElement("div", { className: "graph-panel" },
@@ -128,8 +228,9 @@ export function createApp(React, options = {}) {
                     style: { cursor: "pointer" },
                     "data-node-id": node.id
                 }),
+                React.createElement(NodeBadge, { node }),
                 React.createElement("text", {
-                    x: node.x + node.radius + 8,
+                    x: node.x + node.radius + 10,
                     y: node.y,
                     fill: "#cbd5f5",
                     fontSize: 11,
@@ -175,145 +276,4 @@ export function createApp(React, options = {}) {
                     if (!response.ok) {
                         const message = await response.text();
                         throw new Error(message || `Request failed with status ${response.status}`);
-                    }
-                    const json = await response.json();
-                    if (!cancelled) {
-                        setData(json);
-                        setStatus("success");
-                        if (typeof history !== "undefined") {
-                            history.replaceState({}, "", `?namespace=${encodeURIComponent(namespace)}`);
-                        }
-                    }
-                } catch (err) {
-                    if (!cancelled) {
-                        setError(err.message ?? String(err));
-                        setStatus("error");
-                    }
-                }
-            }
-            load();
-            return () => {
-                cancelled = true;
-            };
-        }, [namespace, fetchImpl]);
-
-        const layout = useMemo(() => (data ? enrichLayout(computeLayout(data)) : null), [data]);
-
-        const statusText = status === "loading"
-            ? "Loading..."
-            : status === "error"
-                ? `Error: ${error}`
-                : status === "success"
-                    ? `Updated ${new Date(data?.generatedAt ?? Date.now()).toLocaleTimeString()}`
-                    : 'Enter namespace to begin';
-
-        return React.createElement(
-            "div",
-            { className: "app-root" },
-            React.createElement(
-                "header",
-                { className: "top-bar" },
-                React.createElement("h1", null, "Istio Route Explorer"),
-                React.createElement(
-                    "div",
-                    { className: "controls" },
-                    React.createElement("label", { htmlFor: "namespace" }, "Namespace"),
-                    React.createElement("input", {
-                        id: "namespace",
-                        name: "namespace",
-                        value: inputNamespace,
-                        onChange: (event) => setInputNamespace(event.target.value),
-                        placeholder: defaultNamespace
-                    }),
-                    React.createElement("button", {
-                        onClick: () => { if (inputNamespace.trim()) { setNamespace(inputNamespace.trim()); setSelected(null); } }
-                    }, "Load"),
-                    React.createElement("button", {
-                        onClick: () => { if (namespace) { setNamespace(namespace); } }
-                    }, "Refresh"),
-                    React.createElement("span", { className: "status", "data-state": status }, statusText)
-                )
-            ),
-            React.createElement(
-                "main",
-                { className: "layout" },
-                React.createElement(TopologyDiagram, {
-                    layout,
-                    selectedNodeId: selected?.type === "node" ? selected.data.id : null,
-                    selectedEdgeId: selected?.type === "edge" ? selected.data.id : null,
-                    onSelect: setSelected
-                }),
-                React.createElement(
-                    "aside",
-                    { className: "details-panel" },
-                    React.createElement(
-                        "section",
-                        null,
-                        React.createElement("h2", null, "Selection"),
-                        React.createElement("pre", { className: "details" }, formatSelection(selected))
-                    ),
-                    React.createElement(
-                        "section",
-                        null,
-                        React.createElement("h2", null, "Summary"),
-                        React.createElement(Summary, { summary: data?.summary })
-                    ),
-                    React.createElement(
-                        "section",
-                        null,
-                        React.createElement("h2", null, "Warnings"),
-                        React.createElement(Warnings, { warnings: data?.warnings })
-                    )
-                )
-            )
-        );
-    }
-
-    return App;
-}
-
-function formatSelection(selected) {
-    if (!selected) {
-        return 'Click a node or edge to inspect';
-    }
-    const printable = clean(selected.data);
-    if (selected.type === 'node') {
-        return `Node ${selected.data.id}\nType: ${selected.data.type}\n\n${JSON.stringify(printable, null, 2)}`;
-    }
-    return `Edge ${selected.data.id}\nType: ${selected.data.kind}\n\n${JSON.stringify(printable, null, 2)}`;
-}
-
-function clean(value) {
-    if (Array.isArray(value)) {
-        return value.map(clean);
-    }
-    if (value && typeof value === 'object') {
-        const result = {};
-        Object.entries(value).forEach(([key, val]) => {
-            if (val === null || val === undefined || val === '') {
-                return;
-            }
-            result[key] = clean(val);
-        });
-        return result;
-    }
-    return value;
-}
-
-function enrichLayout(layout) {
-    const colors = {
-        sidecarContainer: 'var(--sidecar)',
-        externalService: 'var(--external)',
-        default: 'var(--app)'
-    };
-    layout.nodes.forEach((node) => {
-        if (node.type === 'sidecarContainer') {
-            node.color = colors.sidecarContainer;
-        } else if (node.type === 'externalService') {
-            node.color = colors.externalService;
-        } else {
-            node.color = colors.default;
-        }
-    });
-    return layout;
-}
+[... omitted 83 of 495 lines ...]

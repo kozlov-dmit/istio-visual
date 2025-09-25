@@ -82,33 +82,15 @@ body {
     min-height: 0;
 }
 
-.graph-canvas {
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.55);
-}
-
 .graph-svg {
     width: 100%;
     height: 100%;
     display: block;
+    background: rgba(15, 23, 42, 0.55);
 }
 
 .graph-svg text {
     pointer-events: none;
-}
-
-.graph-svg circle {
-    cursor: pointer;
-    transition: transform 0.1s ease;
-}
-
-.graph-svg circle:hover {
-    transform: scale(1.05);
-}
-
-.graph-svg line {
-    cursor: pointer;
 }
 
 .legend {
@@ -136,6 +118,27 @@ body {
 .legend-dot.sidecar { background: var(--sidecar); }
 .legend-dot.external { background: var(--external); }
 
+.badge {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    fill: #1e293b;
+    stroke: none;
+}
+
+.badge.app {
+    fill: #38bdf8;
+}
+
+.badge.sidecar {
+    fill: #c084fc;
+}
+
+.badge.external {
+    fill: #f97316;
+}
+
 .details-panel {
     background: rgba(15, 23, 42, 0.82);
     padding: 1rem;
@@ -152,16 +155,43 @@ body {
     margin-top: 0;
 }
 
-.details, .summary {
+.details {
     background: rgba(30, 41, 59, 0.82);
     padding: 0.75rem;
     border-radius: 6px;
     font-size: 0.9rem;
-    white-space: pre-wrap;
     word-break: break-word;
 }
 
+.details h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 0.4rem 0.6rem;
+}
+
+.details-row {
+    display: contents;
+}
+
+.details-label {
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.details-value {
+    color: #e2e8f0;
+}
+
 .summary {
+    background: rgba(30, 41, 59, 0.82);
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
