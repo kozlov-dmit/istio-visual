@@ -14,6 +14,7 @@ import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -25,8 +26,15 @@ public class IstioClientTest {
     @Test
     public void test() {
         String namespace = "fort-istio";
-        KubernetesClient kubernetesClient = new KubernetesClientBuilder().
-                withConfig(Config.fromKubeconfig(new File("/Users/01571422/Documents/DEVELOP/kube-config/ift/ape6pntk-kubeconfig.txt")))
+        String kubeConfigPath = Optional.ofNullable(System.getProperty("istio.test.kubeconfig"))
+                .orElse(System.getenv("ISTIO_TEST_KUBECONFIG"));
+        Assumptions.assumeTrue(kubeConfigPath != null && !kubeConfigPath.isBlank(),
+                "No kubeconfig path configured for IstioClientTest");
+        File kubeConfig = new File(kubeConfigPath);
+        Assumptions.assumeTrue(kubeConfig.exists(),
+                "Configured kubeconfig path does not exist: " + kubeConfig.getAbsolutePath());
+        KubernetesClient kubernetesClient = new KubernetesClientBuilder()
+                .withConfig(Config.fromKubeconfig(kubeConfig))
                 .build();
         IstioClient istioClient = new DefaultIstioClient(kubernetesClient);
         VirtualServiceList virtualServiceList = istioClient.v1beta1().virtualServices().inNamespace(namespace).list();
@@ -101,16 +109,16 @@ public class IstioClientTest {
     }
 
     /**
-     * Узел назначения в Istio
+     * ??????> ????????????????? ?? Istio
      *
-     * @param host хост назначения
-     * @param ports порты назначения
+     * @param host ?:?????' ?????????????????
+     * @param ports ???????'?< ?????????????????
      */
     record IstioDestination(String host, Map<Number, IstioPort> ports) {
     }
 
     /**
-     * Маршрут
+     * ?????????????'
      */
     @RequiredArgsConstructor
     static class IstioRoute {
@@ -122,17 +130,17 @@ public class IstioClientTest {
     }
 
     /**
-     * Узел в Istio через который проходит трафик
+     * ??????> ?? Istio ??????? ????'?????<?? ???????:??????' ?'?????"???
      *
-     * @param labels метки узла
-     * @param ports  входящие порты
-     * @param rule   описание правил хоста
+     * @param labels ????'??? ?????>??
+     * @param ports  ???:???????%??? ???????'?<
+     * @param rule   ?????????????? ??????????> ?:?????'??
      */
     record IstioHost(HostLabels labels, List<IstioPort> ports, IstioRule rule) {
     }
 
     /**
-     * Описание правила
+     * ?????????????? ??????????>??
      */
     record IstioRule() {
     }

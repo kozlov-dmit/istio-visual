@@ -2,6 +2,9 @@ package io.github.istiorouteexplorer.graph;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import io.github.istiorouteexplorer.model.GraphEdge;
 import io.github.istiorouteexplorer.model.GraphNode;
 import io.github.istiorouteexplorer.model.GraphResponse;
@@ -16,7 +19,6 @@ import java.util.stream.Collectors;
 import io.github.istiorouteexplorer.model.istio.*;
 import io.github.istiorouteexplorer.model.kubernetes.*;
 import lombok.RequiredArgsConstructor;
-import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,11 +28,10 @@ public class GraphBuilder {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
 
-    public final ObjectMapper objectMapper;
-    public final ModelMapper modelMapper;
+    private final ObjectMapper objectMapper;
 
     public GraphResponse build(ResourceCollection collection) {
-        return new Context(collection, objectMapper, modelMapper).build();
+        return new Context(collection, objectMapper).build();
     }
 
     private static final class Context {
@@ -43,14 +44,12 @@ public class GraphBuilder {
         private final Map<String, PodRecord> podRecords = new LinkedHashMap<>();
         private ServicePodsIndex servicePodsIndex;
         private final ObjectMapper objectMapper;
-        private final ModelMapper modelMapper;
 
-        Context(ResourceCollection collection, ObjectMapper objectMapper, ModelMapper modelMapper) {
+        Context(ResourceCollection collection, ObjectMapper objectMapper) {
             this.collection = collection;
-            this.serviceIndex = new ServiceIndex(collection);
-            this.externalServiceIndex = new ExternalServiceIndex(collection.primary());
+            this.serviceIndex = new ServiceIndex(collection, objectMapper);
+            this.externalServiceIndex = new ExternalServiceIndex(collection.primary(), objectMapper);
             this.objectMapper = objectMapper;
-            this.modelMapper = modelMapper;
         }
 
         GraphResponse build() {
@@ -70,7 +69,7 @@ public class GraphBuilder {
 
         private void registerPods() {
             for (var pod : collection.primary().pods()) {
-                PodDto podDto = modelMapper.map(pod, PodDto.class);
+                PodDto podDto = pod;
                 ObjectMetadataDto metadata = podDto.metadata();
                 PodSpecDto spec = podDto.spec();
                 PodStatusDto status = podDto.status();
@@ -129,7 +128,7 @@ public class GraphBuilder {
 
         private void processVirtualServices() {
             for (var vs : collection.primary().virtualServices()) {
-                VirtualServiceDto vsDto = modelMapper.map(vs, VirtualServiceDto.class);
+                VirtualServiceDto vsDto = vs;
                 ObjectMetadataDto metadata = vsDto.metadata();
                 VirtualServiceSpecDto spec = vsDto.spec();
                 if (spec == null) {
@@ -316,21 +315,27 @@ public class GraphBuilder {
 
     private static final class ServiceIndex {
         private final Map<String, ServiceRecord> services = new LinkedHashMap<>();
+        private final ObjectMapper mapper;
 
-        ServiceIndex(ResourceCollection collection) {
+        ServiceIndex(ResourceCollection collection, ObjectMapper objectMapper) {
+            this.mapper = objectMapper.copy()
+                    .setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY)
+                    .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
             List<NamespaceResources> all = new ArrayList<>();
             all.add(collection.primary());
             all.addAll(collection.extras().values());
             for (NamespaceResources resources : all) {
                 for (var serviceResource : resources.services()) {
-                    Map<String, Object> svc = asMap(serviceResource);
+                    Map<String, Object> svc = toMap(serviceResource);
                     Map<String, Object> metadata = asMap(svc.get("metadata"));
                     Map<String, Object> spec = asMap(svc.get("spec"));
                     String name = Objects.toString(metadata.get("name"), null);
                     if (name == null) {
                         continue;
                     }
-                    String namespace = Objects.toString(metadata.getOrDefault("namespace", resources.namespace()), resources.namespace());
+                    String namespace = Objects.toString(
+                            metadata.getOrDefault("namespace", resources.namespace()),
+                            resources.namespace());
                     Map<String, String> selector = asStringMap(spec.get("selector"));
                     ServiceRecord record = new ServiceRecord(name, namespace, selector, spec);
                     for (String variant : canonicalVariants(name, namespace)) {
@@ -375,14 +380,26 @@ public class GraphBuilder {
             return services.keySet();
         }
 
+        private Map<String, Object> toMap(Object value) {
+            if (value == null) {
+                return Map.of();
+            }
+            if (value instanceof Map<?, ?> map) {
+                return asMap(map);
+            }
+            try {
+                return mapper.convertValue(value, MAP_TYPE);
+            } catch (IllegalArgumentException ex) {
+                return Map.of();
+            }
+        }
+
         private record ServiceRecord(String name, String namespace, Map<String, String> selector, Map<String, Object> spec) {
         }
 
         private record ServiceInfo(String name, String namespace, Map<String, String> selector, Map<String, Object> spec) {
         }
-    }
-
-    private static final class ServicePodsIndex {
+    }    private static final class ServicePodsIndex {
         private final Map<String, List<PodRecord>> podsByHost = new LinkedHashMap<>();
 
         ServicePodsIndex(ServiceIndex serviceIndex, Map<String, PodRecord> pods) {
@@ -418,10 +435,14 @@ public class GraphBuilder {
 
     private static final class ExternalServiceIndex {
         private final Map<String, Map<String, Object>> entries = new LinkedHashMap<>();
+        private final ObjectMapper mapper;
 
-        ExternalServiceIndex(NamespaceResources resources) {
+        ExternalServiceIndex(NamespaceResources resources, ObjectMapper objectMapper) {
+            this.mapper = objectMapper.copy()
+                    .setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY)
+                    .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
             for (var serviceEntryResource : resources.serviceEntries()) {
-                Map<String, Object> serviceEntry = asMap(serviceEntryResource);
+                Map<String, Object> serviceEntry = toMap(serviceEntryResource);
                 Map<String, Object> spec = asMap(serviceEntry.get("spec"));
                 Map<String, Object> metadata = asMap(serviceEntry.get("metadata"));
                 for (String host : listOfStrings(spec.get("hosts"))) {
@@ -437,9 +458,21 @@ public class GraphBuilder {
         Optional<Map<String, Object>> find(String host, String namespace) {
             return Optional.ofNullable(entries.get(canonicalHost(host, namespace)));
         }
-    }
 
-    private static Map<String, Object> asMap(Object value) {
+        private Map<String, Object> toMap(Object value) {
+            if (value == null) {
+                return Map.of();
+            }
+            if (value instanceof Map<?, ?> map) {
+                return asMap(map);
+            }
+            try {
+                return mapper.convertValue(value, MAP_TYPE);
+            } catch (IllegalArgumentException ex) {
+                return Map.of();
+            }
+        }
+    }    private static Map<String, Object> asMap(Object value) {
         if (value instanceof Map<?, ?> map) {
             return map.entrySet().stream()
                     .collect(
