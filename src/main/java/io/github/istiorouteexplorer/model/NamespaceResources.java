@@ -1,21 +1,32 @@
 package io.github.istiorouteexplorer.model;
 
+import io.fabric8.istio.api.networking.v1alpha3.EnvoyFilter;
+import io.fabric8.istio.api.networking.v1beta1.DestinationRule;
+import io.fabric8.istio.api.networking.v1beta1.Gateway;
+import io.fabric8.istio.api.networking.v1beta1.ServiceEntry;
+import io.fabric8.istio.api.networking.v1beta1.Sidecar;
+import io.fabric8.istio.api.networking.v1beta1.VirtualService;
+import io.fabric8.istio.api.networking.v1beta1.WorkloadEntry;
+import io.fabric8.istio.api.security.v1beta1.AuthorizationPolicy;
+import io.fabric8.istio.api.security.v1beta1.PeerAuthentication;
+import io.fabric8.istio.api.security.v1beta1.RequestAuthentication;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.api.model.Service;
 import java.util.List;
-import java.util.Map;
 
 public record NamespaceResources(
         String namespace,
-        List<Map<String, Object>> virtualServices,
-        List<Map<String, Object>> destinationRules,
-        List<Map<String, Object>> gateways,
-        List<Map<String, Object>> serviceEntries,
-        List<Map<String, Object>> sidecars,
-        List<Map<String, Object>> envoyFilters,
-        List<Map<String, Object>> workloadEntries,
-        List<Map<String, Object>> authorizationPolicies,
-        List<Map<String, Object>> peerAuthentications,
-        List<Map<String, Object>> requestAuthentications,
-        List<Map<String, Object>> services,
-        List<Map<String, Object>> pods
+        List<VirtualService> virtualServices,
+        List<DestinationRule> destinationRules,
+        List<Gateway> gateways,
+        List<ServiceEntry> serviceEntries,
+        List<Sidecar> sidecars,
+        List<EnvoyFilter> envoyFilters,
+        List<WorkloadEntry> workloadEntries,
+        List<AuthorizationPolicy> authorizationPolicies,
+        List<PeerAuthentication> peerAuthentications,
+        List<RequestAuthentication> requestAuthentications,
+        List<Service> services,
+        List<Pod> pods
 ) {
 }

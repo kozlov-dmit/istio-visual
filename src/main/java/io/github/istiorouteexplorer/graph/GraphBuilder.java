@@ -1,5 +1,8 @@
 package io.github.istiorouteexplorer.graph;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.fabric8.kubernetes.client.utils.Serialization;
 import io.github.istiorouteexplorer.model.GraphEdge;
 import io.github.istiorouteexplorer.model.GraphNode;
 import io.github.istiorouteexplorer.model.GraphResponse;
@@ -23,6 +26,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class GraphBuilder {
+
+    private static final ObjectMapper RESOURCE_MAPPER = Serialization.jsonMapper();
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
+    };
+
 
     public GraphResponse build(ResourceCollection collection) {
         return new Context(collection).build();
@@ -60,7 +68,8 @@ public class GraphBuilder {
         }
 
         private void registerPods() {
-            for (Map<String, Object> pod : collection.primary().pods()) {
+            for (var podResource : collection.primary().pods()) {
+                Map<String, Object> pod = asMap(podResource);
                 Map<String, Object> metadata = asMap(pod.get("metadata"));
                 Map<String, Object> spec = asMap(pod.get("spec"));
                 Map<String, Object> status = asMap(pod.get("status"));
@@ -118,7 +127,8 @@ public class GraphBuilder {
         }
 
         private void processVirtualServices() {
-            for (Map<String, Object> vs : collection.primary().virtualServices()) {
+            for (var virtualServiceResource : collection.primary().virtualServices()) {
+                Map<String, Object> vs = asMap(virtualServiceResource);
                 Map<String, Object> metadata = asMap(vs.get("metadata"));
                 Map<String, Object> spec = asMap(vs.get("spec"));
                 if (spec.isEmpty()) {
@@ -314,7 +324,8 @@ public class GraphBuilder {
             all.add(collection.primary());
             all.addAll(collection.extras().values());
             for (NamespaceResources resources : all) {
-                for (Map<String, Object> svc : resources.services()) {
+                for (var serviceResource : resources.services()) {
+                    Map<String, Object> svc = asMap(serviceResource);
                     Map<String, Object> metadata = asMap(svc.get("metadata"));
                     Map<String, Object> spec = asMap(svc.get("spec"));
                     String name = Objects.toString(metadata.get("name"), null);
@@ -411,7 +422,8 @@ public class GraphBuilder {
         private final Map<String, Map<String, Object>> entries = new LinkedHashMap<>();
 
         ExternalServiceIndex(NamespaceResources resources) {
-            for (Map<String, Object> serviceEntry : resources.serviceEntries()) {
+            for (var serviceEntryResource : resources.serviceEntries()) {
+                Map<String, Object> serviceEntry = asMap(serviceEntryResource);
                 Map<String, Object> spec = asMap(serviceEntry.get("spec"));
                 Map<String, Object> metadata = asMap(serviceEntry.get("metadata"));
                 for (String host : listOfStrings(spec.get("hosts"))) {

@@ -1,10 +1,14 @@
-const POD_HORIZONTAL_GAP = 34;
-const POD_VERTICAL_GAP = 26;
-const LAYER_MARGIN_X = 140;
-const LAYER_MARGIN_Y = 100;
-const WIDTH_PER_LAYER = 260;
-const HEIGHT_PER_GROUP = 200;
-const MIN_CANVAS = 600;
+const POD_HORIZONTAL_GAP = 18;
+const POD_VERTICAL_GAP = 20;
+const LAYER_MARGIN_X = 80;
+const LAYER_MARGIN_Y = 60;
+const WIDTH_PER_LAYER = 180;
+const HEIGHT_PER_GROUP = 140;
+const MIN_CANVAS = 320;
+
+const NODE_RADIUS_APP = 14;
+const NODE_RADIUS_SIDECAR = 12;
+const NODE_RADIUS_EXTERNAL = 16;
 
 export function computeLayout(graph) {
     const nodes = (graph?.nodes ?? []).map(normalizeNode);
@@ -102,9 +106,9 @@ export function computeLayout(graph) {
     layers.forEach((groupList, layer) => {
         const x = LAYER_MARGIN_X + layer * WIDTH_PER_LAYER;
         const count = groupList.length;
-        const stepY = count <= 1 ? 0 : (height - 2 * LAYER_MARGIN_Y) / (count - 1);
+        const stepY = count <= 1 ? 0 : (height - 2 * LAYER_MARGIN_Y) / Math.max(1, count - 1);
         groupList.forEach((group, index) => {
-            const y = count <= 1 ? (height / 2) : (LAYER_MARGIN_Y + stepY * index);
+            const y = count <= 1 ? height / 2 : (LAYER_MARGIN_Y + stepY * index);
             positionGroup(group, x, y);
         });
     });
@@ -145,6 +149,12 @@ function normalizeNode(node) {
         groupLabel = displayName;
     }
 
+    const radius = node.type === 'sidecarContainer'
+        ? NODE_RADIUS_SIDECAR
+        : node.type === 'externalService'
+            ? NODE_RADIUS_EXTERNAL
+            : NODE_RADIUS_APP;
+
     return {
         id: node.id,
         type: node.type,
@@ -159,7 +169,7 @@ function normalizeNode(node) {
         groupLabel,
         x: 0,
         y: 0,
-        radius: node.type === 'sidecarContainer' ? 10 : 12,
+        radius,
         color: node.type === 'sidecarContainer'
             ? 'var(--sidecar)'
             : node.type === 'externalService'
@@ -207,7 +217,7 @@ function positionGroup(group, centerX, centerY) {
         placeColumn(sidecarNodes, centerX + POD_HORIZONTAL_GAP);
         placeColumn(otherNodes, centerX);
     } else if (group.type === 'external') {
-        placeColumn(group.nodes, centerX + POD_HORIZONTAL_GAP * 2);
+        placeColumn(group.nodes, centerX + POD_HORIZONTAL_GAP * 1.5);
     } else {
         placeColumn(group.nodes, centerX);
     }
@@ -219,10 +229,10 @@ function positionGroup(group, centerX, centerY) {
     const minY = Math.min(...ys);
     const maxY = Math.max(...ys);
     group.box = {
-        x: minX - 32,
-        y: minY - 36,
-        width: (maxX - minX) + 64,
-        height: (maxY - minY) + 72
+        x: minX - 20,
+        y: minY - 24,
+        width: (maxX - minX) + 40,
+        height: (maxY - minY) + 48
     };
 }
 
@@ -234,11 +244,12 @@ function computeBounds(nodes, width, height) {
     let maxX = -Infinity;
     let minY = Infinity;
     let maxY = -Infinity;
+    const padding = 40;
     nodes.forEach((node) => {
-        minX = Math.min(minX, node.x - node.radius - 60);
-        maxX = Math.max(maxX, node.x + node.radius + 60);
-        minY = Math.min(minY, node.y - node.radius - 60);
-        maxY = Math.max(maxY, node.y + node.radius + 60);
+        minX = Math.min(minX, node.x - node.radius - padding);
+        maxX = Math.max(maxX, node.x + node.radius + padding);
+        minY = Math.min(minY, node.y - node.radius - padding);
+        maxY = Math.max(maxY, node.y + node.radius + padding);
     });
     return {
         minX: Math.min(minX, 0),
@@ -247,3 +258,4 @@ function computeBounds(nodes, width, height) {
         maxY: Math.max(maxY, height)
     };
 }
+
