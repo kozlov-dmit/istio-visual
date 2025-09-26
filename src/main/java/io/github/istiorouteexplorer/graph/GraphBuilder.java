@@ -2,7 +2,6 @@ package io.github.istiorouteexplorer.graph;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.fabric8.kubernetes.client.utils.Serialization;
 import io.github.istiorouteexplorer.model.GraphEdge;
 import io.github.istiorouteexplorer.model.GraphNode;
 import io.github.istiorouteexplorer.model.GraphResponse;
@@ -11,29 +10,27 @@ import io.github.istiorouteexplorer.model.ResourceCollection;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import io.github.istiorouteexplorer.model.istio.*;
+import io.github.istiorouteexplorer.model.kubernetes.*;
+import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class GraphBuilder {
 
-    private static final ObjectMapper RESOURCE_MAPPER = Serialization.jsonMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {
     };
 
+    public final ObjectMapper objectMapper;
+    public final ModelMapper modelMapper;
 
     public GraphResponse build(ResourceCollection collection) {
-        return new Context(collection).build();
+        return new Context(collection, objectMapper, modelMapper).build();
     }
 
     private static final class Context {
@@ -45,11 +42,15 @@ public class GraphBuilder {
         private final ExternalServiceIndex externalServiceIndex;
         private final Map<String, PodRecord> podRecords = new LinkedHashMap<>();
         private ServicePodsIndex servicePodsIndex;
+        private final ObjectMapper objectMapper;
+        private final ModelMapper modelMapper;
 
-        Context(ResourceCollection collection) {
+        Context(ResourceCollection collection, ObjectMapper objectMapper, ModelMapper modelMapper) {
             this.collection = collection;
             this.serviceIndex = new ServiceIndex(collection);
             this.externalServiceIndex = new ExternalServiceIndex(collection.primary());
+            this.objectMapper = objectMapper;
+            this.modelMapper = modelMapper;
         }
 
         GraphResponse build() {
@@ -68,23 +69,23 @@ public class GraphBuilder {
         }
 
         private void registerPods() {
-            for (var podResource : collection.primary().pods()) {
-                Map<String, Object> pod = asMap(podResource);
-                Map<String, Object> metadata = asMap(pod.get("metadata"));
-                Map<String, Object> spec = asMap(pod.get("spec"));
-                Map<String, Object> status = asMap(pod.get("status"));
-                String namespace = Objects.toString(metadata.getOrDefault("namespace", collection.primary().namespace()));
-                String podName = Objects.toString(metadata.get("name"), null);
+            for (var pod : collection.primary().pods()) {
+                PodDto podDto = modelMapper.map(pod, PodDto.class);
+                ObjectMetadataDto metadata = podDto.metadata();
+                PodSpecDto spec = podDto.spec();
+                PodStatusDto status = podDto.status();
+                String namespace = metadata.namespace();
+                String podName = metadata.name();
                 if (podName == null) {
                     continue;
                 }
-                Map<String, String> labels = asStringMap(metadata.get("labels"));
-                List<Map<String, Object>> containersSpec = listOfMaps(spec.get("containers"));
+                Map<String, String> labels = metadata.labels();
+                List<ContainerDto> containersSpec = spec.containers();
                 List<ContainerRecord> containers = new ArrayList<>();
-                for (Map<String, Object> container : containersSpec) {
-                    String containerName = Objects.toString(container.get("name"), "container");
-                    String image = Objects.toString(container.get("image"), "");
-                    boolean sidecar = isSidecarContainer(pod, containerName, image);
+                for (ContainerDto container : containersSpec) {
+                    String containerName = Objects.toString(container.name(), "container");
+                    String image = Objects.toString(container.image(), "");
+                    boolean sidecar = isSidecarContainer(podDto, containerName, image);
                     String nodeId = "container:%s/%s/%s".formatted(namespace, podName, containerName);
                     Map<String, Object> properties = new LinkedHashMap<>();
                     properties.put("pod", podName);
@@ -94,7 +95,7 @@ public class GraphBuilder {
                     properties.put("image", image);
                     properties.put("displayName", containerName + "@" + podName);
                     properties.put("labels", labels);
-                    if (!status.isEmpty()) {
+                    if (status != null) {
                         properties.put("status", status);
                     }
                     GraphNode node = new GraphNode(nodeId, sidecar ? "sidecarContainer" : "appContainer", properties);
@@ -127,17 +128,17 @@ public class GraphBuilder {
         }
 
         private void processVirtualServices() {
-            for (var virtualServiceResource : collection.primary().virtualServices()) {
-                Map<String, Object> vs = asMap(virtualServiceResource);
-                Map<String, Object> metadata = asMap(vs.get("metadata"));
-                Map<String, Object> spec = asMap(vs.get("spec"));
-                if (spec.isEmpty()) {
+            for (var vs : collection.primary().virtualServices()) {
+                VirtualServiceDto vsDto = modelMapper.map(vs, VirtualServiceDto.class);
+                ObjectMetadataDto metadata = vsDto.metadata();
+                VirtualServiceSpecDto spec = vsDto.spec();
+                if (spec == null) {
                     warnings.add("VirtualService missing spec: " + metadata);
                     continue;
                 }
-                String namespace = Objects.toString(metadata.getOrDefault("namespace", collection.primary().namespace()));
-                String name = Objects.toString(metadata.get("name"), "virtualService");
-                List<String> hosts = listOfStrings(spec.get("hosts"));
+                String namespace = metadata.namespace();
+                String name = Objects.toString(metadata.name(), "virtualService");
+                List<String> hosts = spec.hosts();
                 List<ContainerRecord> sourceContainers = containersForHosts(hosts, namespace, true);
                 if (sourceContainers.isEmpty()) {
                     sourceContainers = containersForHosts(hosts, namespace, false);
@@ -145,35 +146,35 @@ public class GraphBuilder {
                 if (sourceContainers.isEmpty()) {
                     warnings.add("VirtualService %s/%s has no matching source pods".formatted(namespace, name));
                 }
-                List<Map<String, Object>> routes = new ArrayList<>();
-                routes.addAll(listOfMaps(spec.get("http")));
-                routes.addAll(listOfMaps(spec.get("tcp")));
-                routes.addAll(listOfMaps(spec.get("tls")));
+                List<IstioRoute> routes = new ArrayList<>();
+                routes.addAll(spec.http());
+                routes.addAll(spec.tcp());
+                routes.addAll(spec.tls());
                 if (routes.isEmpty()) {
                     warnings.add("VirtualService %s/%s defines no routes".formatted(namespace, name));
                     continue;
                 }
-                for (Map<String, Object> route : routes) {
+                for (IstioRoute route : routes) {
                     handleRoute(namespace, name, route, sourceContainers);
                 }
             }
         }
 
-        private void handleRoute(String namespace, String virtualServiceName, Map<String, Object> route, List<ContainerRecord> sources) {
-            List<Map<String, Object>> destinations = extractDestinations(route);
+        private void handleRoute(String namespace, String virtualServiceName, IstioRoute route, List<ContainerRecord> sources) {
+            List<RouteDestinationDto> destinations = extractDestinations(route);
             if (destinations.isEmpty()) {
                 warnings.add("VirtualService %s/%s route has no destinations".formatted(namespace, virtualServiceName));
                 return;
             }
-            for (Map<String, Object> destination : destinations) {
-                Map<String, Object> destSpec = asMap(destination.get("destination"));
-                if (destSpec.isEmpty() || !destSpec.containsKey("host")) {
+            for (RouteDestinationDto destination : destinations) {
+                DestinationDto destSpec = destination.destination();
+                if (destSpec.host() == null) {
                     warnings.add("VirtualService %s/%s destination missing host".formatted(namespace, virtualServiceName));
                     continue;
                 }
-                String host = Objects.toString(destSpec.get("host"));
-                String destNamespace = Objects.toString(destSpec.getOrDefault("subsetNamespace", namespace));
-                String subset = destSpec.containsKey("subset") ? Objects.toString(destSpec.get("subset")) : null;
+                String host = destSpec.host();
+                String destNamespace = namespace;
+                String subset = destSpec.subset();
                 List<ContainerRecord> targets = containersForHost(host, destNamespace, true);
                 if (targets.isEmpty()) {
                     targets = containersForHost(host, destNamespace, false);
@@ -190,7 +191,7 @@ public class GraphBuilder {
         private void connectContainers(
                 List<ContainerRecord> sources,
                 List<ContainerRecord> targets,
-                Map<String, Object> route,
+                IstioRoute route,
                 String virtualServiceName,
                 String vsNamespace,
                 String destHost,
@@ -220,7 +221,7 @@ public class GraphBuilder {
         private void connectToExternal(
                 List<ContainerRecord> sources,
                 GraphNode external,
-                Map<String, Object> route,
+                IstioRoute route,
                 String virtualServiceName,
                 String namespace,
                 String destHost
@@ -278,34 +279,31 @@ public class GraphBuilder {
             return node;
         }
 
-        private List<Map<String, Object>> extractDestinations(Map<String, Object> route) {
-            List<Map<String, Object>> result = new ArrayList<>();
-            for (String key : List.of("route", "tcp", "tls")) {
-                Object value = route.get(key);
-                if (value instanceof List<?> list) {
-                    for (Object item : list) {
-                        if (item instanceof Map<?, ?> map) {
-                            result.add(asMap(map));
-                        }
+        private List<RouteDestinationDto> extractDestinations(IstioRoute route) {
+            List<RouteDestinationDto> result = new ArrayList<>();
+            switch (route) {
+                case HttpRouteDto httpRoute -> {
+                    result.addAll(httpRoute.route());
+                    if (httpRoute.mirror() != null) {
+                        result.add(httpRoute.mirror());
                     }
                 }
+                case TcpRouteDto tcpRoute -> result.addAll(tcpRoute.route());
+                case TlsRouteDto tlsRoute -> result.addAll(tlsRoute.route());
+                default -> throw new IllegalStateException("Unexpected route type: " + route);
             }
-            Object mirror = route.get("mirror");
-            if (mirror instanceof Map<?, ?> map) {
-                result.add(Map.of("destination", asMap(map)));
-            }
+
             return result;
         }
 
-        private static boolean isSidecarContainer(Map<String, Object> pod, String containerName, String image) {
+        private static boolean isSidecarContainer(PodDto pod, String containerName, String image) {
             if (containerName != null && containerName.toLowerCase(Locale.ROOT).contains("istio-proxy")) {
                 return true;
             }
             if (image != null && image.contains("istio/proxy")) {
                 return true;
             }
-            Map<String, Object> metadata = asMap(pod.get("metadata"));
-            Map<String, Object> annotations = asMap(metadata.get("annotations"));
+            Map<String, String> annotations = pod.metadata().annotations();
             return annotations.containsKey("sidecar.istio.io/status");
         }
     }
@@ -444,7 +442,11 @@ public class GraphBuilder {
     private static Map<String, Object> asMap(Object value) {
         if (value instanceof Map<?, ?> map) {
             return map.entrySet().stream()
-                    .collect(Collectors.toMap(e -> Objects.toString(e.getKey()), Map.Entry::getValue));
+                    .collect(
+                            HashMap::new,
+                            (m, v) -> m.put(String.valueOf(v.getKey()), v.getValue()),
+                            HashMap::putAll
+                    );
         }
         return Map.of();
     }
