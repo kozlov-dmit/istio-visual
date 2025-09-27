@@ -1,6 +1,5 @@
 package io.github.istiorouteexplorer.model.istio;
 
-import io.fabric8.istio.api.api.networking.v1alpha3.PortSelector;
 import java.util.Objects;
 import lombok.NoArgsConstructor;
 
@@ -30,6 +29,18 @@ public class DestinationDto {
 
     public String subset() {
         return subset;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public void setPort(Long port) {
+        this.port = port;
+    }
+
+    public void setSubset(String subset) {
+        this.subset = subset;
     }
 
     @Override

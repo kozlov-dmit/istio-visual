@@ -16,6 +16,7 @@ import java.time.Duration;
 import io.github.istiorouteexplorer.model.istio.*;
 import io.github.istiorouteexplorer.model.kubernetes.*;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.Converter;
 import org.modelmapper.config.Configuration.AccessLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,6 +69,17 @@ public class KubernetesClientConfig {
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
+        Converter<PortSelector, Long> portSelectorToLong = ctx -> {
+            PortSelector portSelector = ctx.getSource();
+            if (portSelector == null) {
+                return null;
+            }
+            if (portSelector.getNumber() != null) {
+                return portSelector.getNumber().longValue();
+            }
+            return null;
+        };
+        modelMapper.addConverter(portSelectorToLong, PortSelector.class, Long.class);
         modelMapper.getConfiguration()
                 .setFieldMatchingEnabled(true)
                 .setFieldAccessLevel(AccessLevel.PRIVATE)
@@ -82,7 +94,9 @@ public class KubernetesClientConfig {
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.VirtualService.class, VirtualServiceSpecDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPRoute.class, HttpRouteDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPRouteDestination.class, HttpRouteDestinationDto.class);
-        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Destination.class, DestinationDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Destination.class, DestinationDto.class)
+                .addMappings(map -> map.using(portSelectorToLong)
+                        .map(io.fabric8.istio.api.api.networking.v1alpha3.Destination::getPort, DestinationDto::setPort));
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPMirrorPolicy.class, HttpMirrorDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.TCPRoute.class, TcpRouteDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.TLSRoute.class, TlsRouteDto.class);

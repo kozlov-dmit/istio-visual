@@ -8,6 +8,7 @@ import io.fabric8.istio.api.api.networking.v1alpha3.Destination;
 import io.fabric8.istio.api.api.networking.v1alpha3.HTTPRoute;
 import io.fabric8.istio.api.api.networking.v1alpha3.HTTPRouteDestination;
 import io.fabric8.istio.api.networking.v1beta1.VirtualService;
+import io.fabric8.istio.api.api.networking.v1alpha3.PortSelector;
 
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.github.istiorouteexplorer.config.KubernetesClientConfig;
@@ -35,6 +36,9 @@ class MapperTest {
         Destination destination = new Destination();
         destination.setHost("ratings");
         destination.setSubset("v1");
+        PortSelector portSelector = new PortSelector();
+        portSelector.setNumber(9080L);
+        destination.setPort(portSelector);
 
         HTTPRouteDestination primaryRoute = new HTTPRouteDestination();
         primaryRoute.setDestination(destination);
@@ -65,6 +69,7 @@ class MapperTest {
         assertEquals(1, mappedDestinations.size());
         HttpRouteDestinationDto mappedDestination = mappedDestinations.get(0);
         assertEquals("ratings", mappedDestination.destination().host());
+        assertEquals(9080L, mappedDestination.destination().port());
         assertEquals("v1", mappedDestination.destination().subset());
         assertEquals(80, mappedDestination.weight());
     }
