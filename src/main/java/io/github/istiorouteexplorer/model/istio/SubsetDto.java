@@ -1,6 +1,11 @@
 package io.github.istiorouteexplorer.model.istio;
+import lombok.NoArgsConstructor;
 
-public final class SubsetDto {
+/**
+ * DTO describing a subset definition referenced by Istio DestinationRules.
+ */
+@NoArgsConstructor(force = true)
+public class SubsetDto {
 
     public SubsetDto() {
     }

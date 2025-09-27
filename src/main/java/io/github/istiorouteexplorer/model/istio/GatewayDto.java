@@ -2,8 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import io.github.istiorouteexplorer.model.kubernetes.ObjectMetadataDto;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
-public final class GatewayDto {
+/**
+ * DTO representing an Istio Gateway resource including metadata and specification.
+ */
+@NoArgsConstructor(force = true)
+public class GatewayDto {
 
     private final ObjectMetadataDto metadata;
     private final GatewaySpecDto spec;

@@ -2,15 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import io.github.istiorouteexplorer.model.kubernetes.ObjectMetadataDto;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * ServiceEntry enables adding additional entries into Istio's internal service registry.
- *
- * @param metadata metadata
- * @param spec spec of ServiceEntry
+ * DTO representing an Istio ServiceEntry resource together with its specification.
  */
-
-public final class ServiceEntryDto {
+@NoArgsConstructor(force = true)
+public class ServiceEntryDto {
 
     private final ObjectMetadataDto metadata;
     private final ServiceEntrySpecDto spec;

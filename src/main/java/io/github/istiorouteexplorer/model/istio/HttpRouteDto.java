@@ -2,14 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Istio route for http traffic
- * @param mirror mirror
- * @param route list of routes
+ * DTO representing the HTTP route configuration section of a VirtualService.
  */
-
-public final class HttpRouteDto implements IstioRoute {
+@NoArgsConstructor(force = true)
+public class HttpRouteDto implements IstioRoute {
 
     private final HttpRouteDestinationDto mirror;
     private final List<HttpRouteDestinationDto> route;

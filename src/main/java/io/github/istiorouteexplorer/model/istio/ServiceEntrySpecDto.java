@@ -2,17 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * ServiceEntry enables adding additional entries into Istio's internal service registry.
- *
- * @param addresses list of IP addresses
- * @param endpoints list of endpoints
- * @param exportTo list of namespaces
- * @param hosts list of hosts
+ * DTO holding the specification details of an Istio ServiceEntry.
  */
-
-public final class ServiceEntrySpecDto {
+@NoArgsConstructor(force = true)
+public class ServiceEntrySpecDto {
 
     private final List<String> addresses;
     private final List<WorkloadEntrySpecDto> endpoints;

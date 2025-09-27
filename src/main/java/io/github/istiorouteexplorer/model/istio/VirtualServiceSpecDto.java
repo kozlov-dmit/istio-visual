@@ -2,16 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Specification of a VirtualService
- * @param hosts list of hostnames
- * @param http list of HTTP routes
- * @param tcp list of TCP routes
- * @param tls list of TLS routes
+ * DTO holding the specification details of an Istio VirtualService.
  */
-
-public final class VirtualServiceSpecDto {
+@NoArgsConstructor(force = true)
+public class VirtualServiceSpecDto {
 
     private final List<String> hosts;
     private final List<HttpRouteDto> http;

@@ -1,14 +1,12 @@
 package io.github.istiorouteexplorer.model.kubernetes;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Kubernetes pod
- * @param metadata - pod metadata
- * @param spec - pod specification
- * @param status - pod status
+ * DTO representing a Kubernetes Pod with its specification and status fragments.
  */
-
-public final class PodDto {
+@NoArgsConstructor(force = true)
+public class PodDto {
 
     private final ObjectMetadataDto metadata;
     private final PodSpecDto spec;

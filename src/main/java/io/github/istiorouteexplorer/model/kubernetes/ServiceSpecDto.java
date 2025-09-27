@@ -5,32 +5,13 @@ import io.fabric8.kubernetes.api.model.ServicePort;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * ServiceSpec describes the attributes that a user creates on a service.
- *
- * @param allocateLoadBalancerNodePorts
- * @param clusterIP
- * @param clusterIPs
- * @param externalIPs
- * @param externalName
- * @param externalTrafficPolicy
- * @param healthCheckNodePort
- * @param internalTrafficPolicy
- * @param ipFamilies
- * @param ipFamilyPolicy
- * @param loadBalancerClass
- * @param loadBalancerIP
- * @param loadBalancerSourceRanges
- * @param ports
- * @param publishNotReadyAddresses
- * @param selector
- * @param sessionAffinity
- * @param trafficDistribution
- * @param type
+ * DTO describing the specification block of a Kubernetes Service.
  */
-
-public final class ServiceSpecDto {
+@NoArgsConstructor(force = true)
+public class ServiceSpecDto {
 
     private final Boolean allocateLoadBalancerNodePorts;
     private final String clusterIP;

@@ -2,14 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Istio route for tcp traffic
- * @param match match criteria
- * @param route destination
+ * DTO representing the TCP route block inside an Istio VirtualService.
  */
-
-public final class TcpRouteDto implements IstioRoute {
+@NoArgsConstructor(force = true)
+public class TcpRouteDto implements IstioRoute {
 
     private final List<TcpMatchDto> match;
     private final List<TcpRouteDestinationDto> route;

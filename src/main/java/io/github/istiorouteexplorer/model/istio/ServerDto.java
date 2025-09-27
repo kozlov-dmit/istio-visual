@@ -2,19 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Server` describes the properties of the proxy on a given load balancer port
- *
- * @param bind bind address
- * @param defaultEndpoint default endpoint
- * @param hosts list of hosts
- * @param name name
- * @param port port
- * @param tls server tls settings
+ * DTO representing server configuration blocks defined on an Istio Gateway.
  */
-
-public final class ServerDto {
+@NoArgsConstructor(force = true)
+public class ServerDto {
 
     private final String bind;
     private final String defaultEndpoint;

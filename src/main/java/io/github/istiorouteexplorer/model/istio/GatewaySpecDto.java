@@ -3,14 +3,13 @@ package io.github.istiorouteexplorer.model.istio;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Spec for Gateway
- * @param selector Map of labels
- * @param servers List of servers
+ * DTO containing listener and TLS configuration defined inside an Istio Gateway.
  */
-
-public final class GatewaySpecDto {
+@NoArgsConstructor(force = true)
+public class GatewaySpecDto {
 
     private final Map<String, String> selector;
     private final List<ServerDto> servers;

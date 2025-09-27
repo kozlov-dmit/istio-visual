@@ -2,16 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Spec for DestinationRule
- * @param exportTo A list of namespaces to which this destination rule is exported
- * @param host The host name for the destination rule
- * @param trafficPolicy The traffic policy for the destination rule
- * @param workloadSelector The workload selector for the destination rule
+ * DTO holding the specification portion of an Istio DestinationRule.
  */
-
-public final class DestinationRuleSpecDto {
+@NoArgsConstructor(force = true)
+public class DestinationRuleSpecDto {
 
     private final List<String> exportTo;
     private final String host;

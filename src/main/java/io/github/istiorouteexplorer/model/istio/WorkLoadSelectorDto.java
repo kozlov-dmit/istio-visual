@@ -2,13 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.Map;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Selector for workload
- * @param matchLabels labels to match
+ * DTO describing the workload selector labels applied to Istio configuration.
  */
-
-public final class WorkLoadSelectorDto {
+@NoArgsConstructor(force = true)
+public class WorkLoadSelectorDto {
 
     private final Map<String, String> matchLabels;
 

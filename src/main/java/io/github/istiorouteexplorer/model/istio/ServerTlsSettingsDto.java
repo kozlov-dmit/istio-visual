@@ -2,8 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
-public final class ServerTlsSettingsDto {
+/**
+ * DTO encapsulating TLS options applied to servers within an Istio Gateway.
+ */
+@NoArgsConstructor(force = true)
+public class ServerTlsSettingsDto {
 
     private final String caCertificates;
     private final String caCrl;

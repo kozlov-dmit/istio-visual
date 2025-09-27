@@ -2,8 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
-public final class ClientTlsSettingsDto {
+/**
+ * DTO describing the Istio client TLS configuration extracted from cluster resources.
+ */
+@NoArgsConstructor(force = true)
+public class ClientTlsSettingsDto {
 
     private final String caCertificates;
     private final String caCrl;

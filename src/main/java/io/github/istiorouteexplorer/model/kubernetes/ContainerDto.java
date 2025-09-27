@@ -1,13 +1,12 @@
 package io.github.istiorouteexplorer.model.kubernetes;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Container
- * @param name container name
- * @param image image
+ * DTO capturing core metadata for a Kubernetes container participating in traffic graphs.
  */
-
-public final class ContainerDto {
+@NoArgsConstructor(force = true)
+public class ContainerDto {
 
     private final String name;
     private final String image;

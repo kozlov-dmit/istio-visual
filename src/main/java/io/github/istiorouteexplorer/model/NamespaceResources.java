@@ -10,8 +10,14 @@ import io.github.istiorouteexplorer.model.kubernetes.ServiceDto;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
-public final class NamespaceResources {
+/**
+ * Aggregates all Kubernetes and Istio resources discovered within a namespace so the graph builder
+ * can construct traffic topology and metadata.
+ */
+@NoArgsConstructor(force = true)
+public class NamespaceResources {
 
     private final String namespace;
     private final List<VirtualServiceDto> virtualServices;

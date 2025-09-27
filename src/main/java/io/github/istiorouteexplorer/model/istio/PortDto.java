@@ -2,16 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Port
- * @param name name
- * @param number number
- * @param protocol protocol
- * @param targetPort targetPort
+ * DTO describing port configuration shared across Istio networking resources.
  */
-
-public final class PortDto {
+@NoArgsConstructor(force = true)
+public class PortDto {
 
     private final String name;
     private final Long number;

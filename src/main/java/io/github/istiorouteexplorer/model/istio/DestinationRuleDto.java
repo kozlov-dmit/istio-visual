@@ -2,14 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import io.github.istiorouteexplorer.model.kubernetes.ObjectMetadataDto;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Rule for destinations
- * @param metadata metadata
- * @param spec rule spec
+ * DTO representing an Istio DestinationRule resource with associated metadata and spec.
  */
-
-public final class DestinationRuleDto {
+@NoArgsConstructor(force = true)
+public class DestinationRuleDto {
 
     private final ObjectMetadataDto metadata;
     private final DestinationRuleSpecDto spec;

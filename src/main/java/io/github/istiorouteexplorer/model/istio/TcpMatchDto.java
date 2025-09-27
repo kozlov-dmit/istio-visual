@@ -2,15 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Dto for matching tcp traffic
- * @param destinationSubnets list of subnets
- * @param gateways list of gateways
- * @param port port
+ * DTO capturing match conditions applied to Istio TCP routes.
  */
-
-public final class TcpMatchDto {
+@NoArgsConstructor(force = true)
+public class TcpMatchDto {
 
     private final List<String> destinationSubnets;
     private final List<String> gateways;

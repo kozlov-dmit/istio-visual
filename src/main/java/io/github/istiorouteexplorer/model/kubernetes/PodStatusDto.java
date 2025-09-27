@@ -1,12 +1,12 @@
 package io.github.istiorouteexplorer.model.kubernetes;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Pod status
- * @param phase Phase of the pod
+ * DTO capturing status information for a Kubernetes Pod.
  */
-
-public final class PodStatusDto {
+@NoArgsConstructor(force = true)
+public class PodStatusDto {
 
     private final String phase;
 

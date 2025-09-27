@@ -1,13 +1,12 @@
 package io.github.istiorouteexplorer.model.istio;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Mirror to specify the destination to mirror http traffic
- * @param destinationDto the destination to mirror
- * @param percentage the percentage of traffic to mirror
+ * DTO encapsulating HTTP mirroring settings declared on a VirtualService route.
  */
-
-public final class HttpMirrorDto {
+@NoArgsConstructor(force = true)
+public class HttpMirrorDto {
 
     private final DestinationDto destinationDto;
     private final Double percentage;

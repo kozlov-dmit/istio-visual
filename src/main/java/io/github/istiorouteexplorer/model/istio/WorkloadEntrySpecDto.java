@@ -2,20 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.Map;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * WorkloadEntry enables specifying the properties of a single non-Kubernetes workload such a VM or a bare metal services that can be referred to by service entries
- *
- * @param address address
- * @param labels labels
- * @param locality locality
- * @param network network
- * @param ports ports
- * @param serviceAccount serviceAccount
- * @param weight weight
+ * DTO describing workload attributes contained in an Istio WorkloadEntry specification.
  */
-
-public final class WorkloadEntrySpecDto {
+@NoArgsConstructor(force = true)
+public class WorkloadEntrySpecDto {
 
     private final String address;
     private final Map<String, String> labels;

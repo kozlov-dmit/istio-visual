@@ -2,15 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import io.github.istiorouteexplorer.model.kubernetes.ObjectMetadataDto;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * WorkloadEntry enables specifying the properties of a single non-Kubernetes workload such a VM or a bare metal services that can be referred to by service entries.
- *
- * @param metadata metadata
- * @param spec spec
+ * DTO representing an Istio WorkloadEntry resource.
  */
-
-public final class WorkloadEntryDto {
+@NoArgsConstructor(force = true)
+public class WorkloadEntryDto {
 
     private final ObjectMetadataDto metadata;
     private final WorkloadEntrySpecDto spec;

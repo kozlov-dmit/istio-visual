@@ -1,14 +1,12 @@
 package io.github.istiorouteexplorer.model.istio;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Route destination for HTTP traffic
- * @param destination destination
-// * @param headers headers
- * @param weight weight
+ * DTO describing an HTTP route destination and its weighting within a VirtualService.
  */
-
-public final class HttpRouteDestinationDto implements RouteDestinationDto {
+@NoArgsConstructor(force = true)
+public class HttpRouteDestinationDto implements RouteDestinationDto {
 
     private final DestinationDto destination;
     private final Integer weight;

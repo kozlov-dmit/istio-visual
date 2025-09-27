@@ -2,12 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Istio Route for tls traffic
+ * DTO describing a TLS routing entry in an Istio VirtualService.
  */
-
-public final class TlsRouteDto implements IstioRoute {
+@NoArgsConstructor(force = true)
+public class TlsRouteDto implements IstioRoute {
 
     private final List<TlsMatchDto> match;
     private final List<TcpRouteDestinationDto> route;

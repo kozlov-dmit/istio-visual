@@ -2,14 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import io.github.istiorouteexplorer.model.kubernetes.ObjectMetadataDto;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * VirtualService
- * @param metadata metadata
- * @param spec spec
+ * DTO representing an Istio VirtualService resource with metadata and specification.
  */
-
-public final class VirtualServiceDto {
+@NoArgsConstructor(force = true)
+public class VirtualServiceDto {
 
     private final ObjectMetadataDto metadata;
     private final VirtualServiceSpecDto spec;

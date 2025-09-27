@@ -1,13 +1,12 @@
 package io.github.istiorouteexplorer.model.istio;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Route destination for TCP traffic.
- * @param destination the destination
- * @param weight the weight
+ * DTO describing the destination target used by an Istio TCP route.
  */
-
-public final class TcpRouteDestinationDto implements RouteDestinationDto {
+@NoArgsConstructor(force = true)
+public class TcpRouteDestinationDto implements RouteDestinationDto {
 
     private final DestinationDto destination;
     private final Integer weight;

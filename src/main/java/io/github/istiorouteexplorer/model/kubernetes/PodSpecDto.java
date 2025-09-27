@@ -2,13 +2,13 @@ package io.github.istiorouteexplorer.model.kubernetes;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Kubernetes pod specification
- * @param containers List of pod containers
+ * DTO providing specification details for a Kubernetes Pod used when building topology.
  */
-
-public final class PodSpecDto {
+@NoArgsConstructor(force = true)
+public class PodSpecDto {
 
     private final List<ContainerDto> containers;
 

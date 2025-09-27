@@ -2,16 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import java.util.List;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Dto for matching tls traffic
- * @param destinationSubnets destination subnets
- * @param gateways gateways
- * @param port port
- * @param sniHosts sni hosts
+ * DTO capturing the match conditions for TLS routing rules in Istio.
  */
-
-public final class TlsMatchDto {
+@NoArgsConstructor(force = true)
+public class TlsMatchDto {
 
     private final List<String> destinationSubnets;
     private final List<String> gateways;

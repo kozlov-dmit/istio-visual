@@ -2,15 +2,13 @@ package io.github.istiorouteexplorer.model.istio;
 
 import io.fabric8.istio.api.api.networking.v1alpha3.PortSelector;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Istio Destination
- * @param host host
- * @param port port
- * @param subset subset
+ * DTO capturing the target host, port, and subset information for an Istio route destination.
  */
-
-public final class DestinationDto {
+@NoArgsConstructor(force = true)
+public class DestinationDto {
 
     private final String host;
     private final Long port;

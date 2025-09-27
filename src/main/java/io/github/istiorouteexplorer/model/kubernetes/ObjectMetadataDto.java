@@ -2,16 +2,13 @@ package io.github.istiorouteexplorer.model.kubernetes;
 
 import java.util.Map;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Metadata of a kubernetes object
- *
- * @param name      the name of the object
- * @param namespace the namespace of the object
- * @param labels    the labels of the object
+ * DTO mirroring Kubernetes object metadata such as name, namespace, labels, and annotations.
  */
-
-public final class ObjectMetadataDto {
+@NoArgsConstructor(force = true)
+public class ObjectMetadataDto {
 
     private final String name;
     private final String namespace;

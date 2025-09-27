@@ -1,13 +1,12 @@
 package io.github.istiorouteexplorer.model.istio;
 import java.util.Objects;
+import lombok.NoArgsConstructor;
 
 /**
- * Traffic policy
- *
- * @param tls TLS settings
+ * DTO aggregating traffic policy settings such as load balancing, connection pools, and TLS.
  */
-
-public final class TrafficPolicyDto {
+@NoArgsConstructor(force = true)
+public class TrafficPolicyDto {
 
     private final ClientTlsSettingsDto tls;
 
