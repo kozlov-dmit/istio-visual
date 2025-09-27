@@ -8,7 +8,7 @@ public enum ServiceEntryResolution {
     DNS_ROUND_ROBIN(3),
     NONE(0),
     STATIC(1);
-    private final int value;
+    private int value;
     ServiceEntryResolution(int value) {
         this.value = value;
     }

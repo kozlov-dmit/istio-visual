@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class TlsMatchDto {
 
-    private final List<String> destinationSubnets;
-    private final List<String> gateways;
-    private final Long port;
-    private final List<String> sniHosts;
+    private List<String> destinationSubnets;
+    private List<String> gateways;
+    private Long port;
+    private List<String> sniHosts;
 
     public TlsMatchDto(List<String> destinationSubnets, List<String> gateways, Long port, List<String> sniHosts) {
         this.destinationSubnets = destinationSubnets;

@@ -10,7 +10,7 @@ public enum ServerTlsMode {
     OPTIONAL_MUTUAL(5),
     PASSTHROUGH(0),
     SIMPLE(1);
-    private final int value;
+    private int value;
 
     private ServerTlsMode(final int value) {
         this.value = value;

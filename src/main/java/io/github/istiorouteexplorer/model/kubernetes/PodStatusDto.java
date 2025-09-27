@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class PodStatusDto {
 
-    private final String phase;
+    private String phase;
 
     public PodStatusDto(String phase) {
         this.phase = phase;

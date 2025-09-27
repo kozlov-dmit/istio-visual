@@ -10,15 +10,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ClientTlsSettingsDto {
 
-    private final String caCertificates;
-    private final String caCrl;
-    private final String clientCertificate;
-    private final String credentialName;
-    private final Boolean insecureSkipVerify;
-    private final String privateKey;
-    private final String sni;
-    private final List<String> subjectAltNames;
-    private final ClientTlsMode mode;
+    private String caCertificates;
+    private String caCrl;
+    private String clientCertificate;
+    private String credentialName;
+    private Boolean insecureSkipVerify;
+    private String privateKey;
+    private String sni;
+    private List<String> subjectAltNames;
+    private ClientTlsMode mode;
 
     public ClientTlsSettingsDto(String caCertificates, String caCrl, String clientCertificate, String credentialName, Boolean insecureSkipVerify, String privateKey, String sni, List<String> subjectAltNames, ClientTlsMode mode) {
         this.caCertificates = caCertificates;

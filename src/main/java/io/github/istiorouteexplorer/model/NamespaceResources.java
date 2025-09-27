@@ -19,14 +19,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class NamespaceResources {
 
-    private final String namespace;
-    private final List<VirtualServiceDto> virtualServices;
-    private final List<DestinationRuleDto> destinationRules;
-    private final List<GatewayDto> gateways;
-    private final List<ServiceEntryDto> serviceEntries;
-    private final List<WorkloadEntryDto> workloadEntries;
-    private final List<ServiceDto> services;
-    private final List<PodDto> pods;
+    private String namespace;
+    private List<VirtualServiceDto> virtualServices;
+    private List<DestinationRuleDto> destinationRules;
+    private List<GatewayDto> gateways;
+    private List<ServiceEntryDto> serviceEntries;
+    private List<WorkloadEntryDto> workloadEntries;
+    private List<ServiceDto> services;
+    private List<PodDto> pods;
 
     public NamespaceResources(
             String namespace,

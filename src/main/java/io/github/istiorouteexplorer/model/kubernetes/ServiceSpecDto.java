@@ -13,25 +13,25 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ServiceSpecDto {
 
-    private final Boolean allocateLoadBalancerNodePorts;
-    private final String clusterIP;
-    private final List<String> clusterIPs;
-    private final List<String> externalIPs;
-    private final String externalName;
-    private final String externalTrafficPolicy;
-    private final Integer healthCheckNodePort;
-    private final String internalTrafficPolicy;
-    private final List<String> ipFamilies;
-    private final String ipFamilyPolicy;
-    private final String loadBalancerClass;
-    private final String loadBalancerIP;
-    private final List<String> loadBalancerSourceRanges;
-    private final List<ServicePort> ports;
-    private final Boolean publishNotReadyAddresses;
-    private final Map<String, String> selector;
-    private final String sessionAffinity;
-    private final String trafficDistribution;
-    private final String type;
+    private Boolean allocateLoadBalancerNodePorts;
+    private String clusterIP;
+    private List<String> clusterIPs;
+    private List<String> externalIPs;
+    private String externalName;
+    private String externalTrafficPolicy;
+    private Integer healthCheckNodePort;
+    private String internalTrafficPolicy;
+    private List<String> ipFamilies;
+    private String ipFamilyPolicy;
+    private String loadBalancerClass;
+    private String loadBalancerIP;
+    private List<String> loadBalancerSourceRanges;
+    private List<ServicePort> ports;
+    private Boolean publishNotReadyAddresses;
+    private Map<String, String> selector;
+    private String sessionAffinity;
+    private String trafficDistribution;
+    private String type;
 
     public ServiceSpecDto(Boolean allocateLoadBalancerNodePorts, String clusterIP, List<String> clusterIPs, List<String> externalIPs, String externalName, String externalTrafficPolicy, Integer healthCheckNodePort, String internalTrafficPolicy, List<String> ipFamilies, String ipFamilyPolicy, String loadBalancerClass, String loadBalancerIP, List<String> loadBalancerSourceRanges, List<ServicePort> ports, Boolean publishNotReadyAddresses, Map<String, String> selector, String sessionAffinity, String trafficDistribution, String type) {
         this.allocateLoadBalancerNodePorts = allocateLoadBalancerNodePorts;

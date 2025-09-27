@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class WorkLoadSelectorDto {
 
-    private final Map<String, String> matchLabels;
+    private Map<String, String> matchLabels;
 
     public WorkLoadSelectorDto(Map<String, String> matchLabels) {
         this.matchLabels = matchLabels;

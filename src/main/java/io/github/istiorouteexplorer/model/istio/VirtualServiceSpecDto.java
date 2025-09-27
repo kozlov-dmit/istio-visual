@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class VirtualServiceSpecDto {
 
-    private final List<String> hosts;
-    private final List<HttpRouteDto> http;
-    private final List<TcpRouteDto> tcp;
-    private final List<TlsRouteDto> tls;
+    private List<String> hosts;
+    private List<HttpRouteDto> http;
+    private List<TcpRouteDto> tcp;
+    private List<TlsRouteDto> tls;
 
     public VirtualServiceSpecDto(List<String> hosts, List<HttpRouteDto> http, List<TcpRouteDto> tcp, List<TlsRouteDto> tls) {
         this.hosts = hosts;

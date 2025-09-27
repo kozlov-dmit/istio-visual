@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class GatewaySpecDto {
 
-    private final Map<String, String> selector;
-    private final List<ServerDto> servers;
+    private Map<String, String> selector;
+    private List<ServerDto> servers;
 
     public GatewaySpecDto(Map<String, String> selector, List<ServerDto> servers) {
         this.selector = selector;

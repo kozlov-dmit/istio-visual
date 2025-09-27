@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class DestinationDto {
 
-    private final String host;
-    private final Long port;
-    private final String subset;
+    private String host;
+    private Long port;
+    private String subset;
 
     public DestinationDto(String host, Long port, String subset) {
         this.host = host;

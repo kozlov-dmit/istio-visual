@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class PortDto {
 
-    private final String name;
-    private final Long number;
-    private final String protocol;
-    private final Long targetPort;
+    private String name;
+    private Long number;
+    private String protocol;
+    private Long targetPort;
 
     public PortDto(String name, Long number, String protocol, Long targetPort) {
         this.name = name;

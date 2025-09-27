@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class PodSpecDto {
 
-    private final List<ContainerDto> containers;
+    private List<ContainerDto> containers;
 
     public PodSpecDto(List<ContainerDto> containers) {
         this.containers = containers;

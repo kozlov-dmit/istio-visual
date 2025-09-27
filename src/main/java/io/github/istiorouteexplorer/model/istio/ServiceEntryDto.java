@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ServiceEntryDto {
 
-    private final ObjectMetadataDto metadata;
-    private final ServiceEntrySpecDto spec;
+    private ObjectMetadataDto metadata;
+    private ServiceEntrySpecDto spec;
 
     public ServiceEntryDto(ObjectMetadataDto metadata, ServiceEntrySpecDto spec) {
         this.metadata = metadata;

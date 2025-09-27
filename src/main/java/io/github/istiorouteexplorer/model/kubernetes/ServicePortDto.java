@@ -10,12 +10,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ServicePortDto {
 
-    private final String appProtocol;
-    private final String name;
-    private final Integer nodePort;
-    private final Integer port;
-    private final String protocol;
-    private final IntOrString targetPort;
+    private String appProtocol;
+    private String name;
+    private Integer nodePort;
+    private Integer port;
+    private String protocol;
+    private IntOrString targetPort;
 
     public ServicePortDto(String appProtocol, String name, Integer nodePort, Integer port, String protocol, IntOrString targetPort) {
         this.appProtocol = appProtocol;

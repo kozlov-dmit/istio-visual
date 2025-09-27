@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class TrafficPolicyDto {
 
-    private final ClientTlsSettingsDto tls;
+    private ClientTlsSettingsDto tls;
 
     public TrafficPolicyDto(ClientTlsSettingsDto tls) {
         this.tls = tls;

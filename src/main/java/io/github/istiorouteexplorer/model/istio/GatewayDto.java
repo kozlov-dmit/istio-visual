@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class GatewayDto {
 
-    private final ObjectMetadataDto metadata;
-    private final GatewaySpecDto spec;
+    private ObjectMetadataDto metadata;
+    private GatewaySpecDto spec;
 
     public GatewayDto(ObjectMetadataDto metadata, GatewaySpecDto spec) {
         this.metadata = metadata;

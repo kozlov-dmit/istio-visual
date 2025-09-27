@@ -10,13 +10,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class WorkloadEntrySpecDto {
 
-    private final String address;
-    private final Map<String, String> labels;
-    private final String locality;
-    private final String network;
-    private final Map<String, Long> ports;
-    private final String serviceAccount;
-    private final Long weight;
+    private String address;
+    private Map<String, String> labels;
+    private String locality;
+    private String network;
+    private Map<String, Long> ports;
+    private String serviceAccount;
+    private Long weight;
 
     public WorkloadEntrySpecDto(String address, Map<String, String> labels, String locality, String network, Map<String, Long> ports, String serviceAccount, Long weight) {
         this.address = address;

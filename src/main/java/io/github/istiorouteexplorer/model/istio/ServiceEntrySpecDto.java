@@ -10,14 +10,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ServiceEntrySpecDto {
 
-    private final List<String> addresses;
-    private final List<WorkloadEntrySpecDto> endpoints;
-    private final List<String> exportTo;
-    private final List<String> hosts;
-    private final List<PortDto> ports;
-    private final ServiceEntryResolution resolution;
-    private final List<String> subjectAltNames;
-    private final WorkLoadSelectorDto workloadSelector;
+    private List<String> addresses;
+    private List<WorkloadEntrySpecDto> endpoints;
+    private List<String> exportTo;
+    private List<String> hosts;
+    private List<PortDto> ports;
+    private ServiceEntryResolution resolution;
+    private List<String> subjectAltNames;
+    private WorkLoadSelectorDto workloadSelector;
 
     public ServiceEntrySpecDto(List<String> addresses, List<WorkloadEntrySpecDto> endpoints, List<String> exportTo, List<String> hosts, List<PortDto> ports, ServiceEntryResolution resolution, List<String> subjectAltNames, WorkLoadSelectorDto workloadSelector) {
         this.addresses = addresses;

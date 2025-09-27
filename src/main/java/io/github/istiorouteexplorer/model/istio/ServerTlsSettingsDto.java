@@ -10,15 +10,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ServerTlsSettingsDto {
 
-    private final String caCertificates;
-    private final String caCrl;
-    private final List<String> cipherSuites;
-    private final String credentialName;
-    private final Boolean httpsRedirect;
-    private final ServerTlsMode mode;
-    private final String privateKey;
-    private final String serverCertificate;
-    private final List<String> subjectAltNames;
+    private String caCertificates;
+    private String caCrl;
+    private List<String> cipherSuites;
+    private String credentialName;
+    private Boolean httpsRedirect;
+    private ServerTlsMode mode;
+    private String privateKey;
+    private String serverCertificate;
+    private List<String> subjectAltNames;
 
     public ServerTlsSettingsDto(String caCertificates, String caCrl, List<String> cipherSuites, String credentialName, Boolean httpsRedirect, ServerTlsMode mode, String privateKey, String serverCertificate, List<String> subjectAltNames) {
         this.caCertificates = caCertificates;

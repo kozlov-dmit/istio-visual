@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class VirtualServiceDto {
 
-    private final ObjectMetadataDto metadata;
-    private final VirtualServiceSpecDto spec;
+    private ObjectMetadataDto metadata;
+    private VirtualServiceSpecDto spec;
 
     public VirtualServiceDto(ObjectMetadataDto metadata, VirtualServiceSpecDto spec) {
         this.metadata = metadata;

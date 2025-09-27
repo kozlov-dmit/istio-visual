@@ -5,7 +5,7 @@ public enum ClientTlsMode {
     ISTIO_MUTUAL(3),
     MUTUAL(2),
     SIMPLE(1);
-    private final int value;
+    private int value;
     ClientTlsMode(int value) {
         this.value = value;
     }

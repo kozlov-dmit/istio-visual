@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class TcpMatchDto {
 
-    private final List<String> destinationSubnets;
-    private final List<String> gateways;
-    private final Long port;
+    private List<String> destinationSubnets;
+    private List<String> gateways;
+    private Long port;
 
     public TcpMatchDto(List<String> destinationSubnets, List<String> gateways, Long port) {
         this.destinationSubnets = destinationSubnets;

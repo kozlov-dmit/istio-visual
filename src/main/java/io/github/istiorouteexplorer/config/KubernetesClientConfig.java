@@ -1,7 +1,7 @@
 package io.github.istiorouteexplorer.config;
 
 import io.fabric8.istio.api.api.networking.v1alpha3.*;
-import io.fabric8.istio.api.networking.v1beta1.VirtualService;
+import io.fabric8.istio.api.networking.v1beta1.*;
 import io.fabric8.istio.client.IstioClient;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.Config;
@@ -16,7 +16,7 @@ import java.time.Duration;
 import io.github.istiorouteexplorer.model.istio.*;
 import io.github.istiorouteexplorer.model.kubernetes.*;
 import org.modelmapper.ModelMapper;
-import org.modelmapper.record.RecordModule;
+import org.modelmapper.config.Configuration.AccessLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -68,22 +68,37 @@ public class KubernetesClientConfig {
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
+        modelMapper.getConfiguration()
+                .setFieldMatchingEnabled(true)
+                .setFieldAccessLevel(AccessLevel.PRIVATE)
+                .setSkipNullEnabled(true);
+
         modelMapper.createTypeMap(ObjectMeta.class, ObjectMetadataDto.class);
         modelMapper.createTypeMap(Container.class, ContainerDto.class);
         modelMapper.createTypeMap(PodSpec.class, PodSpecDto.class);
         modelMapper.createTypeMap(PodStatus.class, PodStatusDto.class);
         modelMapper.createTypeMap(Pod.class, PodDto.class);
-        modelMapper.createTypeMap(VirtualService.class, VirtualServiceDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.networking.v1beta1.VirtualService.class, VirtualServiceDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.VirtualService.class, VirtualServiceSpecDto.class);
-        modelMapper.createTypeMap(TCPRoute.class, TcpRouteDto.class);
-        modelMapper.createTypeMap(TLSRoute.class, TlsRouteDto.class);
-        modelMapper.createTypeMap(Destination.class, DestinationDto.class);
-        modelMapper.createTypeMap(HTTPRouteDestination.class, HttpRouteDestinationDto.class);
-        modelMapper.createTypeMap(HTTPMirrorPolicy.class, HttpMirrorDto.class);
-        modelMapper.createTypeMap(HTTPRoute.class, HttpRouteDto.class);
-
-        modelMapper.registerModule(new RecordModule());
-
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPRoute.class, HttpRouteDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPRouteDestination.class, HttpRouteDestinationDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Destination.class, DestinationDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPMirrorPolicy.class, HttpMirrorDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.TCPRoute.class, TcpRouteDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.TLSRoute.class, TlsRouteDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.networking.v1beta1.DestinationRule.class, DestinationRuleDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.DestinationRule.class, DestinationRuleSpecDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.TrafficPolicy.class, TrafficPolicyDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.ClientTLSSettings.class, ClientTlsSettingsDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.ServerTLSSettings.class, ServerTlsSettingsDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Subset.class, SubsetDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.networking.v1beta1.ServiceEntry.class, ServiceEntryDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.ServiceEntry.class, ServiceEntrySpecDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.networking.v1beta1.WorkloadEntry.class, WorkloadEntryDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.WorkloadEntry.class, WorkloadEntrySpecDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.networking.v1beta1.Gateway.class, GatewayDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Gateway.class, GatewaySpecDto.class);
+        modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Server.class, ServerDto.class);
         return modelMapper;
     }
 

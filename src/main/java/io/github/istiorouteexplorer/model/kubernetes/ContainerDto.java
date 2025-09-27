@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ContainerDto {
 
-    private final String name;
-    private final String image;
+    private String name;
+    private String image;
 
     public ContainerDto(String name, String image) {
         this.name = name;

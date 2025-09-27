@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class DestinationRuleDto {
 
-    private final ObjectMetadataDto metadata;
-    private final DestinationRuleSpecDto spec;
+    private ObjectMetadataDto metadata;
+    private DestinationRuleSpecDto spec;
 
     public DestinationRuleDto(ObjectMetadataDto metadata, DestinationRuleSpecDto spec) {
         this.metadata = metadata;

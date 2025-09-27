@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class TcpRouteDestinationDto implements RouteDestinationDto {
 
-    private final DestinationDto destination;
-    private final Integer weight;
+    private DestinationDto destination;
+    private Integer weight;
 
     public TcpRouteDestinationDto(DestinationDto destination, Integer weight) {
         this.destination = destination;

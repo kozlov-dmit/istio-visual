@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class HttpRouteDto implements IstioRoute {
 
-    private final HttpRouteDestinationDto mirror;
-    private final List<HttpRouteDestinationDto> route;
+    private HttpRouteDestinationDto mirror;
+    private List<HttpRouteDestinationDto> route;
 
     public HttpRouteDto(HttpRouteDestinationDto mirror, List<HttpRouteDestinationDto> route) {
         this.mirror = mirror;

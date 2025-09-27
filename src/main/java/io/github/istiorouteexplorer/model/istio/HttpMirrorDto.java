@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class HttpMirrorDto {
 
-    private final DestinationDto destinationDto;
-    private final Double percentage;
+    private DestinationDto destinationDto;
+    private Double percentage;
 
     public HttpMirrorDto(DestinationDto destinationDto, Double percentage) {
         this.destinationDto = destinationDto;

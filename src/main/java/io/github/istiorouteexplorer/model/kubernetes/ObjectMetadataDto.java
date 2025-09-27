@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ObjectMetadataDto {
 
-    private final String name;
-    private final String namespace;
-    private final Map<String, String> labels;
-    private final Map<String, String> annotations;
+    private String name;
+    private String namespace;
+    private Map<String, String> labels;
+    private Map<String, String> annotations;
 
     public ObjectMetadataDto(String name, String namespace, Map<String, String> labels, Map<String, String> annotations) {
         this.name = name;

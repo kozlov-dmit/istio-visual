@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class SubsetDto {
 
-    public SubsetDto() {
-    }
-
     @Override
     public boolean equals(Object o) {
         return o instanceof SubsetDto;

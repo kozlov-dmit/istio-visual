@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class DestinationRuleSpecDto {
 
-    private final List<String> exportTo;
-    private final String host;
-    private final TrafficPolicyDto trafficPolicy;
-    private final WorkLoadSelectorDto workloadSelector;
+    private List<String> exportTo;
+    private String host;
+    private TrafficPolicyDto trafficPolicy;
+    private WorkLoadSelectorDto workloadSelector;
 
     public DestinationRuleSpecDto(List<String> exportTo, String host, TrafficPolicyDto trafficPolicy, WorkLoadSelectorDto workloadSelector) {
         this.exportTo = exportTo;

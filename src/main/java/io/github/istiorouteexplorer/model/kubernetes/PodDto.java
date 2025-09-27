@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class PodDto {
 
-    private final ObjectMetadataDto metadata;
-    private final PodSpecDto spec;
-    private final PodStatusDto status;
+    private ObjectMetadataDto metadata;
+    private PodSpecDto spec;
+    private PodStatusDto status;
 
     public PodDto(ObjectMetadataDto metadata, PodSpecDto spec, PodStatusDto status) {
         this.metadata = metadata;

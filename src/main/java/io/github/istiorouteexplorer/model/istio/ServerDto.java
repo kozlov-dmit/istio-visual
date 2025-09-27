@@ -10,12 +10,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class ServerDto {
 
-    private final String bind;
-    private final String defaultEndpoint;
-    private final List<String> hosts;
-    private final String name;
-    private final PortDto port;
-    private final ServerTlsSettingsDto tls;
+    private String bind;
+    private String defaultEndpoint;
+    private List<String> hosts;
+    private String name;
+    private PortDto port;
+    private ServerTlsSettingsDto tls;
 
     public ServerDto(String bind, String defaultEndpoint, List<String> hosts, String name, PortDto port, ServerTlsSettingsDto tls) {
         this.bind = bind;
