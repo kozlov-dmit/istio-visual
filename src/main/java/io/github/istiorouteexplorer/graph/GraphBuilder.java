@@ -138,6 +138,11 @@ public class GraphBuilder {
                 String namespace = metadata.namespace();
                 String name = Objects.toString(metadata.name(), "virtualService");
                 List<String> hosts = spec.hosts();
+                List<String> sourceHosts = hosts == null ? List.of() : hosts.stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toUnmodifiableList());
                 List<ContainerRecord> sourceContainers = containersForHosts(hosts, namespace, true);
                 if (sourceContainers.isEmpty()) {
                     sourceContainers = containersForHosts(hosts, namespace, false);
@@ -154,13 +159,14 @@ public class GraphBuilder {
                     continue;
                 }
                 for (IstioRoute route : routes) {
-                    handleRoute(namespace, name, route, sourceContainers);
+                    handleRoute(namespace, name, route, sourceContainers, sourceHosts);
                 }
             }
         }
 
-        private void handleRoute(String namespace, String virtualServiceName, IstioRoute route, List<ContainerRecord> sources) {
+        private void handleRoute(String namespace, String virtualServiceName, IstioRoute route, List<ContainerRecord> sources, List<String> sourceHosts) {
             List<RouteDestinationDto> destinations = extractDestinations(route);
+            List<String> hostsForEdges = (sourceHosts == null || sourceHosts.isEmpty()) ? List.of() : sourceHosts;
             if (destinations.isEmpty()) {
                 warnings.add("VirtualService %s/%s route has no destinations".formatted(namespace, virtualServiceName));
                 return;
@@ -180,9 +186,9 @@ public class GraphBuilder {
                 }
                 if (targets.isEmpty()) {
                     GraphNode external = ensureExternalNode(host, destNamespace);
-                    connectToExternal(sources, external, route, virtualServiceName, namespace, host);
+                    connectToExternal(sources, external, route, virtualServiceName, namespace, host, hostsForEdges);
                 } else {
-                    connectContainers(sources, targets, route, virtualServiceName, namespace, host, destNamespace, subset);
+                    connectContainers(sources, targets, route, virtualServiceName, namespace, host, destNamespace, subset, hostsForEdges);
                 }
             }
         }
@@ -195,11 +201,13 @@ public class GraphBuilder {
                 String vsNamespace,
                 String destHost,
                 String destNamespace,
-                String subset
+                String subset,
+                List<String> sourceHosts
         ) {
             if (sources.isEmpty() || targets.isEmpty()) {
                 return;
             }
+            List<String> hostsSnapshot = (sourceHosts == null || sourceHosts.isEmpty()) ? List.of() : List.copyOf(sourceHosts);
             for (ContainerRecord source : sources) {
                 for (ContainerRecord target : targets) {
                     Map<String, Object> metadata = new LinkedHashMap<>();
@@ -207,6 +215,7 @@ public class GraphBuilder {
                     metadata.put("route", route);
                     metadata.put("destinationHost", destHost);
                     metadata.put("destinationNamespace", destNamespace);
+                    metadata.put("sourceHosts", hostsSnapshot);
                     if (subset != null) {
                         metadata.put("subset", subset);
                     }
@@ -223,16 +232,19 @@ public class GraphBuilder {
                 IstioRoute route,
                 String virtualServiceName,
                 String namespace,
-                String destHost
+                String destHost,
+                List<String> sourceHosts
         ) {
             if (sources.isEmpty()) {
                 return;
             }
+            List<String> hostsSnapshot = (sourceHosts == null || sourceHosts.isEmpty()) ? List.of() : List.copyOf(sourceHosts);
             for (ContainerRecord source : sources) {
                 Map<String, Object> metadata = new LinkedHashMap<>();
                 metadata.put("virtualService", Map.of("name", virtualServiceName, "namespace", namespace));
                 metadata.put("route", route);
                 metadata.put("destinationHost", destHost);
+                metadata.put("sourceHosts", hostsSnapshot);
                 metadata.put("external", external.properties());
                 String edgeId = "%s->%s:%s".formatted(source.nodeId(), external.id(), hash(source.nodeId() + external.id() + destHost));
                 edges.add(new GraphEdge(edgeId, "traffic", source.nodeId(), external.id(), metadata));

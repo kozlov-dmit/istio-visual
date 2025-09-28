@@ -63,13 +63,19 @@ class TopologyUiE2ETest {
 
             page.navigate("http://localhost:" + port + "/?namespace=default",
                     new Page.NavigateOptions().setWaitUntil(WaitUntilState.NETWORKIDLE));
+            page.waitForSelector("body", new Page.WaitForSelectorOptions().setTimeout(10_000));
+            page.waitForTimeout(1000);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> initialErrors = (List<Map<String, Object>>) page.evaluate("() => window.__errors");
+            assertTrue(initialErrors == null || initialErrors.isEmpty(), "Initial console errors: " + initialErrors);
+
             page.waitForSelector("svg.graph-svg",
                     new Page.WaitForSelectorOptions()
                             .setTimeout(20_000)
                             .setState(WaitForSelectorState.VISIBLE));
-            page.waitForSelector("circle[data-node-id='container:default/checkout/app']",
+            page.waitForSelector("circle[data-node-id='service:default/checkout']",
                     new Page.WaitForSelectorOptions().setTimeout(20_000));
-            page.click("circle[data-node-id='container:default/checkout/app']");
+            page.click("circle[data-node-id='service:default/checkout']");
             page.waitForSelector(".details h3",
                     new Page.WaitForSelectorOptions().setTimeout(10_000));
 
@@ -195,6 +201,7 @@ class TopologyUiE2ETest {
             edgeMetaToEgress.put("virtualService", Map.of("name", vsName, "namespace", "default"));
             edgeMetaToEgress.put("destinationHost", "istio-egressgateway.istio-system.svc.cluster.local");
             edgeMetaToEgress.put("destinationNamespace", "istio-system");
+            edgeMetaToEgress.put("sourceHosts", List.of(podName));
             Map<String, Object> routeSettings = new LinkedHashMap<>();
             routeSettings.put("timeout", (2 + (i % 4)) + "s");
             routeSettings.put("retries", Map.of(
@@ -240,6 +247,7 @@ class TopologyUiE2ETest {
             edgeMetaToExternal.put("virtualService", Map.of("name", vsName, "namespace", "default"));
             edgeMetaToExternal.put("destinationHost", host);
             edgeMetaToExternal.put("destinationNamespace", "external");
+            edgeMetaToExternal.put("sourceHosts", List.of("istio-egressgateway.istio-system.svc.cluster.local"));
             if (i % 2 == 0) {
                 edgeMetaToExternal.put("trafficPolicy", Map.of("tls", Map.of("mode", "ISTIO_MUTUAL")));
             }
@@ -310,4 +318,5 @@ class TopologyUiE2ETest {
         }
     }
 }
+
 

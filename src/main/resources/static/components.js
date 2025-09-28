@@ -1,4 +1,4 @@
-import { computeLayout } from "./topology.js";
+import { computeLayout, edgePath } from "./topology.js";
 
 export function createApp(React, options = {}) {
     const { useEffect, useMemo, useState, useRef, Fragment } = React;
@@ -13,16 +13,16 @@ export function createApp(React, options = {}) {
             "div",
             { className: "legend" },
             React.createElement("div", null,
-                React.createElement("span", { className: "legend-dot app" }),
-                "Application"
-            ),
-            React.createElement("div", null,
-                React.createElement("span", { className: "legend-dot sidecar" }),
-                "Sidecar"
+                React.createElement("span", { className: "legend-dot service" }),
+                "Service"
             ),
             React.createElement("div", null,
                 React.createElement("span", { className: "legend-dot external" }),
-                "External"
+                "External service"
+            ),
+            React.createElement("div", null,
+                React.createElement("span", { className: "legend-dot mesh" }),
+                "Mesh / gateway"
             )
         );
     }
@@ -60,73 +60,62 @@ export function createApp(React, options = {}) {
 
     function describeNodeDetails(node) {
         if (!node) {
-            return [];
+            return { rows: [], pods: [] };
         }
-        const props = node.properties ?? {};
         const rows = [];
-        rows.push(["Type", node.type]);
-        if (props.displayName && props.displayName !== node.id) {
-            rows.push(["Display name", props.displayName]);
+        const pods = Array.isArray(node.pods) ? node.pods : [];
+        const typeLabel = node.external ? "External service" : (node.type === "mesh" ? "Mesh gateway" : "Service");
+        rows.push(["Type", typeLabel]);
+        rows.push(["Name", node.label ?? node.name ?? node.id]);
+        if (node.namespace) {
+            rows.push(["Namespace", node.namespace]);
         }
-        if (props.namespace) {
-            rows.push(["Namespace", props.namespace]);
+        if (node.host) {
+            rows.push(["Host", node.host]);
         }
-        if (props.pod) {
-            rows.push(["Pod", props.pod]);
+        if (node.metrics) {
+            if (node.metrics.outbound != null) {
+                rows.push(["Outbound links", String(node.metrics.outbound)]);
+            }
+            if (node.metrics.inbound != null) {
+                rows.push(["Inbound links", String(node.metrics.inbound)]);
+            }
+            if (node.metrics.podCount != null) {
+                rows.push(["Pod count", String(node.metrics.podCount)]);
+            }
         }
-        if (props.container) {
-            rows.push(["Container", props.container]);
+        if (Array.isArray(node.containerIds) && node.containerIds.length) {
+            rows.push(["Containers", node.containerIds.join(", ")]);
         }
-        if (props.containerType) {
-            rows.push(["Role", props.containerType === "sidecar" ? "Sidecar" : "Application"]);
-        }
-        if (props.image) {
-            rows.push(["Image", props.image]);
-        }
-        if (props.host) {
-            rows.push(["Host", props.host]);
-        }
-        if (props.labels && Object.keys(props.labels).length > 0) {
-            rows.push(["Labels", Object.entries(props.labels).map(([k, v]) => `${k}=${v}`).join(", ")]);
-        }
-        if (props.serviceAccount) {
-            rows.push(["Service account", props.serviceAccount]);
-        }
-        return rows;
+        return { rows, pods };
     }
 
     function describeEdge(edge) {
         if (!edge) {
-            return [];
+            return { rows: [], routes: [] };
         }
-        const props = edge.properties ?? {};
         const rows = [];
-        rows.push(["Type", edge.kind]);
-        rows.push(["Source", edge.sourceId ?? edge.source?.id ?? "unknown"]);
-        rows.push(["Target", edge.targetId ?? edge.target?.id ?? "unknown"]);
+        rows.push(["Source", edge.sourceLabel ?? edge.source ?? "unknown"]);
+        rows.push(["Target", edge.targetLabel ?? edge.target ?? "unknown"]);
+        const props = edge.properties ?? {};
+        if (props.connectionCount != null) {
+            rows.push(["Connections", String(props.connectionCount)]);
+        }
+        const virtualServices = Array.isArray(props.virtualServices) ? props.virtualServices : [];
+        if (virtualServices.length) {
+            rows.push(["Virtual services", virtualServices.join(", ")]);
+        }
         if (props.destinationHost) {
             rows.push(["Destination host", props.destinationHost]);
         }
         if (props.destinationNamespace) {
             rows.push(["Destination namespace", props.destinationNamespace]);
         }
-        if (props.route?.timeout) {
-            rows.push(["Timeout", props.route.timeout]);
-        }
-        const retries = props.route?.retries ?? props.route?.retryPolicy;
-        if (retries) {
-            rows.push(["Retries", JSON.stringify(retries)]);
-        }
-        if (props.trafficPolicy) {
-            rows.push(["Traffic policy", JSON.stringify(props.trafficPolicy)]);
-        }
         if (props.requestTimeout) {
             rows.push(["Request timeout", props.requestTimeout]);
         }
-        if (!props.destinationHost && !props.destinationNamespace && !props.route && !props.trafficPolicy && !props.requestTimeout) {
-            rows.push(["Info", "No additional metadata"]);
-        }
-        return rows;
+        const routeSummaries = Array.isArray(props.routeSummaries) ? props.routeSummaries : [];
+        return { rows, routes: routeSummaries };
     }
 
     function DetailsPanel({ selected }) {
@@ -134,34 +123,47 @@ export function createApp(React, options = {}) {
             return React.createElement("pre", { className: "details" }, "Select a node or edge to inspect");
         }
         if (selected.type === "node") {
-            const rows = describeNodeDetails(selected.data);
+            const detail = describeNodeDetails(selected.data);
+            const title = selected.data.label ?? selected.data.name ?? selected.data.id;
             return React.createElement(
                 "div",
                 { className: "details" },
-                React.createElement("h3", null, selected.data.properties?.displayName ?? selected.data.id),
+                React.createElement("h3", null, title),
                 React.createElement("div", { className: "details-grid" },
-                    rows.map(([label, value], idx) =>
-                        React.createElement(React.Fragment, { key: `${label}-${idx}` },
-                            React.createElement("span", { className: "details-label" }, label),
-                            React.createElement("span", { className: "details-value" }, String(value))
-                        )
+                    detail.rows.map(([label, value], idx) => React.createElement(React.Fragment, { key: `${label}-${idx}` },
+                        React.createElement("span", { className: "details-label" }, label),
+                        React.createElement("span", { className: "details-value" }, String(value))
+                    ))
+                ),
+                detail.pods.length ? React.createElement("div", { className: "details-section" },
+                    React.createElement("h4", null, "Pods"),
+                    React.createElement("ul", null,
+                        detail.pods.map((pod) => React.createElement("li", { key: pod }, pod))
                     )
-                )
+                ) : null
             );
         }
-        const rows = describeEdge(selected.data);
+        const detail = describeEdge(selected.data);
+        const sourceLabel = detail.rows.find(([label]) => label === "Source")?.[1] ?? "Source";
+        const targetLabel = detail.rows.find(([label]) => label === "Target")?.[1] ?? "Target";
         return React.createElement(
             "div",
             { className: "details" },
-            React.createElement("h3", null, "Traffic Edge"),
+            React.createElement("h3", null, `Traffic ${sourceLabel} -> ${targetLabel}`),
             React.createElement("div", { className: "details-grid" },
-                rows.map(([label, value], idx) =>
-                    React.createElement(React.Fragment, { key: `${label}-${idx}` },
-                        React.createElement("span", { className: "details-label" }, label),
-                        React.createElement("span", { className: "details-value" }, String(value))
-                    )
+                detail.rows.map(([label, value], idx) => React.createElement(React.Fragment, { key: `${label}-${idx}` },
+                    React.createElement("span", { className: "details-label" }, label),
+                    React.createElement("span", { className: "details-value" }, String(value))
+                ))
+            ),
+            detail.routes.length ? React.createElement("div", { className: "details-section" },
+                React.createElement("h4", null, "Route settings"),
+                React.createElement("ul", null,
+                    detail.routes.map((route, idx) => React.createElement("li", { key: idx },
+                        React.createElement("pre", null, JSON.stringify(route, null, 2))
+                    ))
                 )
-            )
+            ) : null
         );
     }
 
@@ -172,16 +174,13 @@ export function createApp(React, options = {}) {
             );
         }
 
-        const bounds = layout.bounds;
-        const { minX, minY, maxX, maxY } = bounds;
-        const baseWidth = Math.max(200, maxX - minX);
-        const baseHeight = Math.max(200, maxY - minY);
+        const bounds = layout.bounds ?? { minX: 0, minY: 0, maxX: layout.width ?? 0, maxY: layout.height ?? 0 };
         const baseViewBox = useMemo(() => ({
-            minX,
-            minY,
-            width: baseWidth,
-            height: baseHeight
-        }), [minX, minY, baseWidth, baseHeight]);
+            minX: bounds.minX,
+            minY: bounds.minY,
+            width: Math.max(200, bounds.maxX - bounds.minX),
+            height: Math.max(200, bounds.maxY - bounds.minY)
+        }), [bounds.minX, bounds.minY, bounds.maxX, bounds.maxY]);
 
         const [viewBoxState, setViewBoxState] = useState({ ...baseViewBox });
         const [isPanning, setIsPanning] = useState(false);
@@ -194,28 +193,23 @@ export function createApp(React, options = {}) {
         }, [baseViewBox]);
 
         useEffect(() => {
-            if (!focusNodeId || !layout?.nodes?.length) {
+            if (!focusNodeId) {
                 return;
             }
             const node = layout.nodes.find((item) => item.id === focusNodeId);
             if (!node) {
                 return;
             }
-            setViewBoxState((prev) => {
-                const scale = prev.width / baseViewBox.width;
-                const width = baseViewBox.width * scale;
-                const height = baseViewBox.height * scale;
-                return {
-                    minX: node.x - width / 2,
-                    minY: node.y - height / 2,
-                    width,
-                    height
-                };
-            });
-        }, [focusNodeId, layout, baseViewBox]);
+            setViewBoxState((prev) => ({
+                minX: node.x - prev.width / 2,
+                minY: node.y - prev.height / 2,
+                width: prev.width,
+                height: prev.height
+            }));
+        }, [focusNodeId, layout.nodes]);
 
-        const minScale = 0.08;
-        const maxScale = 6.5;
+        const minScale = 0.12;
+        const maxScale = 4;
 
         const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -323,68 +317,97 @@ export function createApp(React, options = {}) {
         };
 
         const viewBoxValue = `${viewBoxState.minX} ${viewBoxState.minY} ${viewBoxState.width} ${viewBoxState.height}`;
+        const nodeIndex = useMemo(() => new Map(layout.nodes.map((node) => [node.id, node])), [layout.nodes]);
+        const selectedNodeId = selected?.type === "node" ? selected.data?.id : null;
+        const selectedEdgeId = selected?.type === "edge" ? selected.data?.id : null;
 
-        const podBoxes = layout.groups
-            .filter((group) => group.type === "pod" && group.box)
-            .map((group) => React.createElement("g", { key: group.key },
-                React.createElement("rect", {
-                    x: group.box.x,
-                    y: group.box.y,
-                    width: group.box.width,
-                    height: group.box.height,
-                    fill: "rgba(30, 64, 175, 0.08)",
-                    stroke: "rgba(59, 130, 246, 0.35)",
-                    strokeDasharray: "6,6",
-                    strokeWidth: 1.2
-                }),
-                React.createElement("text", {
-                    x: group.box.x + 4,
-                    y: group.box.y - 12,
-                    fontSize: 12,
-                    fill: "#94a3b8"
-                }, group.label)
-            ));
+        const markerDefs = React.createElement("defs", null,
+            React.createElement("marker", {
+                id: "edge-arrow",
+                viewBox: "0 0 12 12",
+                refX: "12",
+                refY: "6",
+                markerWidth: "8",
+                markerHeight: "8",
+                orient: "auto",
+                style: { color: "inherit" }
+            },
+                React.createElement("path", {
+                    d: "M 0 0 L 12 6 L 0 12 z",
+                    fill: "currentColor"
+                })
+            )
+        );
 
-        const edgeElements = layout.edges.map((edge) => React.createElement("line", {
-            key: edge.id,
-            x1: edge.source.x,
-            y1: edge.source.y,
-            x2: edge.target.x,
-            y2: edge.target.y,
-            stroke: edge.kind === "podLink" ? "rgba(148,163,184,0.25)" : "rgba(148,163,184,0.45)",
-            strokeWidth: edge.kind === "podLink" ? 0.35 : 0.75,
-            onClick: () => onSelect({ type: "edge", data: edge.data }),
-            role: "button",
-            tabIndex: 0,
-            "aria-label": `Edge ${edge.id}`,
-            style: { cursor: "pointer" },
-            "data-interactive": "true"
-        }));
-
-        const nodeElements = layout.nodes.map((node) => React.createElement("g", { key: node.id },
-            React.createElement("circle", {
-                cx: node.x,
-                cy: node.y,
-                r: node.radius,
-                fill: node.color,
-                stroke: selected?.data?.id === node.id ? "#fbbf24" : "#0f172a",
-                strokeWidth: 2,
-                onClick: () => onSelect({ type: "node", data: node.data }),
+        const edgeElements = layout.edges.map((edge) => {
+            const source = nodeIndex.get(edge.source);
+            const target = nodeIndex.get(edge.target);
+            if (!source || !target) {
+                return null;
+            }
+            const weight = edge.properties?.connectionCount ?? 1;
+            const strokeWidth = Math.min(5, 1.2 + Math.log10(weight + 1));
+            const isSelected = selectedEdgeId === edge.id;
+            const stroke = isSelected ? "#fbbf24" : "rgba(148,163,184,0.55)";
+            return React.createElement("path", {
+                key: edge.id,
+                d: edgePath(source, target),
+                fill: "none",
+                stroke,
+                strokeWidth,
+                markerEnd: "url(#edge-arrow)",
+                strokeLinecap: "round",
+                strokeLinejoin: "round",
+                onClick: (event) => {
+                    event.stopPropagation();
+                    onSelect({ type: "edge", data: edge });
+                },
                 role: "button",
                 tabIndex: 0,
-                "aria-label": node.displayName,
-                style: { cursor: "pointer" },
-                "data-node-id": node.id,
+                style: { cursor: "pointer", color: stroke },
+                "data-edge-id": edge.id,
                 "data-interactive": "true"
-            }),
-            React.createElement("text", {
-                x: node.x + node.radius + 10,
-                y: node.y,
-                fill: "#e2e8f0",
-                fontSize: 11,
-                dominantBaseline: "middle"
-            }, node.displayName)
-        ));
+            });
+        }).filter(Boolean);
+
+        const nodeElements = layout.nodes.map((node) => {
+            const isSelected = selectedNodeId === node.id;
+            return React.createElement("g", { key: node.id, className: "service-node" },
+                React.createElement("circle", {
+                    cx: node.x,
+                    cy: node.y,
+                    r: node.radius,
+                    fill: node.color,
+                    stroke: isSelected ? "#fbbf24" : "#0f172a",
+                    strokeWidth: isSelected ? 3 : 2,
+                    onClick: (event) => {
+                        event.stopPropagation();
+                        onSelect({ type: "node", data: node });
+                    },
+                    role: "button",
+                    tabIndex: 0,
+                    "aria-label": node.label,
+                    style: { cursor: "pointer" },
+                    "data-node-id": node.id,
+                    "data-interactive": "true"
+                }),
+                React.createElement("text", {
+                    x: node.x,
+                    y: node.y - node.radius - 10,
+                    textAnchor: "middle",
+                    fill: "#e2e8f0",
+                    fontSize: 13,
+                    className: "node-label"
+                }, node.label),
+                node.namespace ? React.createElement("text", {
+                    x: node.x,
+                    y: node.y + node.radius + 18,
+                    textAnchor: "middle",
+                    fill: "#94a3b8",
+                    fontSize: 11
+                }, node.namespace) : null
+            );
+        });
 
         return React.createElement("div", { className: `graph-panel${isPanning ? " panning" : ""}` },
             React.createElement("div", { className: "zoom-controls" },
@@ -416,13 +439,14 @@ export function createApp(React, options = {}) {
                 onPointerCancel: endPan,
                 style: { touchAction: "none" }
             },
-                podBoxes,
+                markerDefs,
                 edgeElements,
                 nodeElements
             ),
             React.createElement(Legend, null)
         );
     }
+
 
     function ViewToggle({ view, onChange }) {
         const buttons = [
@@ -724,13 +748,10 @@ export function createApp(React, options = {}) {
             if (!layout?.nodes?.length) {
                 return [];
             }
-            const mapped = layout.nodes.map((node) => {
-                const label = node.displayName ?? node.data?.id ?? node.id;
-                return {
-                    id: node.id,
-                    label
-                };
-            });
+            const mapped = layout.nodes.map((node) => ({
+                id: node.id,
+                label: node.label ?? node.name ?? node.id
+            }));
             return mapped.sort((a, b) => a.label.localeCompare(b.label));
         }, [layout]);
         const nodeIndex = useMemo(() => {
@@ -774,7 +795,7 @@ export function createApp(React, options = {}) {
             }
             const lowerTerm = term.toLowerCase();
             const match = layout.nodes.find((node) => {
-                const display = (node.displayName ?? node.data?.id ?? node.id ?? "").toLowerCase();
+                const display = (node.label ?? node.name ?? node.id ?? "").toLowerCase();
                 const identifier = (node.id ?? "").toLowerCase();
                 return display.includes(lowerTerm) || identifier.includes(lowerTerm);
             });
@@ -783,9 +804,9 @@ export function createApp(React, options = {}) {
                 return;
             }
             setSearchError("");
-            const label = match.displayName ?? match.data?.id ?? match.id;
+            const label = match.label ?? match.name ?? match.id;
             setSearchTerm(label);
-            handleSelect({ type: "node", data: match.data });
+            handleSelect({ type: "node", data: match });
         };
 
         const searchDisabled = view !== "topology" || status !== "ready" || !layout?.nodes?.length;

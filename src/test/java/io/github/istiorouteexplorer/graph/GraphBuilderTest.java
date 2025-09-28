@@ -61,6 +61,9 @@ class GraphBuilderTest {
         assertEquals("container:demo/frontend-pod/istio-proxy", trafficEdge.source());
         assertEquals("container:demo/backend-pod/istio-proxy", trafficEdge.target());
         assertEquals("backend", trafficEdge.properties().get("destinationHost"));
+                @SuppressWarnings("unchecked")
+        List<String> sourceHosts = (List<String>) trafficEdge.properties().get("sourceHosts");
+        assertTrue(sourceHosts.contains("frontend"));
 
         long podLinks = response.edges().stream().filter(edge -> edge.kind().equals("podLink")).count();
         assertEquals(2, podLinks, "Each pod should contribute a pod link edge");

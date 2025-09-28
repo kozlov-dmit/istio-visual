@@ -152,9 +152,9 @@ body {
     margin-right: 0.35rem;
 }
 
-.legend-dot.app { background: var(--app); }
-.legend-dot.sidecar { background: var(--sidecar); }
+.legend-dot.service { background: var(--service-node); }
 .legend-dot.external { background: var(--external); }
+.legend-dot.mesh { background: var(--mesh-node); }
 
 .badge {
     font-size: 9px;
@@ -512,4 +512,29 @@ body {
 .controls .status {
     align-self: center;
     margin-top: 0.35rem;
+}
+
+.details-section {
+    margin-top: 1rem;
+}
+
+.details-section h4 {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
+    color: #e2e8f0;
+}
+
+.details-section ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.8rem;
+    color: #cbd5f5;
+}
+
+.details-section pre {
+    margin: 0.35rem 0;
+    background: rgba(15, 23, 42, 0.7);
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    overflow-x: auto;
 }
