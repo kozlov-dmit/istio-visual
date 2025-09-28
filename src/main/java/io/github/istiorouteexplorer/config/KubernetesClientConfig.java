@@ -15,8 +15,8 @@ import java.time.Duration;
 
 import io.github.istiorouteexplorer.model.istio.*;
 import io.github.istiorouteexplorer.model.kubernetes.*;
-import org.modelmapper.ModelMapper;
 import org.modelmapper.Converter;
+import org.modelmapper.ModelMapper;
 import org.modelmapper.config.Configuration.AccessLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,8 +95,20 @@ public class KubernetesClientConfig {
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPRoute.class, HttpRouteDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPRouteDestination.class, HttpRouteDestinationDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Destination.class, DestinationDto.class)
-                .addMappings(map -> map.using(portSelectorToLong)
-                        .map(io.fabric8.istio.api.api.networking.v1alpha3.Destination::getPort, DestinationDto::setPort));
+                .setConverter(ctx -> {
+                    io.fabric8.istio.api.api.networking.v1alpha3.Destination source = ctx.getSource();
+                    if (source == null) {
+                        return null;
+                    }
+                    DestinationDto target = ctx.getDestination();
+                    if (target == null) {
+                        target = new DestinationDto();
+                    }
+                    target.setHost(source.getHost());
+                    target.setSubset(source.getSubset());
+                    target.setPort(source.getPort() != null ? source.getPort().getNumber() : null);
+                    return target;
+                });
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPMirrorPolicy.class, HttpMirrorDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.TCPRoute.class, TcpRouteDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.TLSRoute.class, TlsRouteDto.class);
