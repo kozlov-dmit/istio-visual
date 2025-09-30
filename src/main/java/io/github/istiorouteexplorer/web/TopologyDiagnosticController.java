@@ -2,11 +2,9 @@ package io.github.istiorouteexplorer.web;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.ExecWatch;
-import io.github.istiorouteexplorer.graph.TopologyBuilder;
 import io.github.istiorouteexplorer.model.TopologyGraph;
 import io.github.istiorouteexplorer.service.RouteExplorerService;
 import lombok.RequiredArgsConstructor;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -25,17 +23,24 @@ public class TopologyDiagnosticController {
     public Map<String, Object> diagnose(@RequestParam(defaultValue = "default") String namespace) {
         TopologyGraph graph = routeExplorerService.buildTopology(namespace);
 
-        List<Map<String, Object>> nodes = graph.getNodes().values().stream()
-                .map(n -> Map.<String, Object>of())
-                .collect(Collectors.toList());
         
+        List<Map<String, Object>> nodes = graph.getNodes().values().stream()
+                .map(n -> Map.<String, Object>of(
+                        "id", n.getId(),
+                        "type", n.getType().name(),
+                        "meta", n.getMetadata(),
+                        "nodeDiagnostics", graph.getNodeDiagnostics().getOrDefault(n.getId(), Collections.emptyList())
+                        ))
+                .collect(Collectors.toList());
+
         List<Map<String, Object>> edges = graph.getEdges().stream().map(e -> {
             List<Map<String, Object>> diags = e.getDiagnostics().stream()
-            .map(d -> Map.<String, Object>of(
-                    "severity", d.getSeverity().name(),
-                    "code", d.getCode(),
-                    "message", d.getMessage(),
-                    "suggestion", d.getSuggestion())).collect(Collectors.toList());
+                    .map(d -> Map.<String, Object>of(
+                            "severity", d.getSeverity().name(),
+                            "code", d.getCode(),
+                            "message", d.getMessage(),
+                            "suggestion", d.getSuggestion()))
+                    .collect(Collectors.toList());
 
             return Map.<String, Object>of(
                     "fromId", e.getFromId(),

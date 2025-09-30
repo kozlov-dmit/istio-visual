@@ -1,6 +1,5 @@
 package io.github.istiorouteexplorer.model.istio;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import lombok.NoArgsConstructor;
 

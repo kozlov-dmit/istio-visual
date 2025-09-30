@@ -1,4 +1,4 @@
-package io.github.istiorouteexplorer.graph;
+﻿package io.github.istiorouteexplorer.graph;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,13 +43,11 @@ public class GraphBuilder {
         private final ExternalServiceIndex externalServiceIndex;
         private final Map<String, PodRecord> podRecords = new LinkedHashMap<>();
         private ServicePodsIndex servicePodsIndex;
-        private final ObjectMapper objectMapper;
-
+        
         Context(ResourceCollection collection, ObjectMapper objectMapper) {
             this.collection = collection;
             this.serviceIndex = new ServiceIndex(collection, objectMapper);
             this.externalServiceIndex = new ExternalServiceIndex(collection.primary(), objectMapper);
-            this.objectMapper = objectMapper;
         }
 
         GraphResponse build() {

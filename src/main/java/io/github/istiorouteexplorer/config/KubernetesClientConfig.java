@@ -1,7 +1,6 @@
 package io.github.istiorouteexplorer.config;
 
 import io.fabric8.istio.api.api.networking.v1alpha3.*;
-import io.fabric8.istio.api.networking.v1beta1.*;
 import io.fabric8.istio.client.IstioClient;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.Config;
