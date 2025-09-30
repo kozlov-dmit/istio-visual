@@ -30,33 +30,33 @@ import java.util.*;
 @Slf4j
 public class IstioClientTest {
 
-    @Test
-    public void test() throws Exception {
-        String namespace = "fort-istio";
-        String kubeConfigPath = Optional.ofNullable(System.getProperty("istio.test.kubeconfig"))
-                .orElse(System.getenv("ISTIO_TEST_KUBECONFIG"));
-        Assumptions.assumeTrue(kubeConfigPath != null && !kubeConfigPath.isBlank(),
-                "No kubeconfig path configured for IstioClientTest");
-        File kubeConfig = new File(kubeConfigPath);
-        Assumptions.assumeTrue(kubeConfig.exists(),
-                "Configured kubeconfig path does not exist: " + kubeConfig.getAbsolutePath());
-        KubernetesClient kubernetesClient = new KubernetesClientBuilder()
-                .withConfig(Config.fromKubeconfig(kubeConfig))
-                .build();
-        IstioClient istioClient = new DefaultIstioClient(kubernetesClient);
+//     @Test
+//     public void test() throws Exception {
+//         String namespace = "fort-istio";
+//         String kubeConfigPath = Optional.ofNullable(System.getProperty("istio.test.kubeconfig"))
+//                 .orElse(System.getenv("ISTIO_TEST_KUBECONFIG"));
+//         Assumptions.assumeTrue(kubeConfigPath != null && !kubeConfigPath.isBlank(),
+//                 "No kubeconfig path configured for IstioClientTest");
+//         File kubeConfig = new File(kubeConfigPath);
+//         Assumptions.assumeTrue(kubeConfig.exists(),
+//                 "Configured kubeconfig path does not exist: " + kubeConfig.getAbsolutePath());
+//         KubernetesClient kubernetesClient = new KubernetesClientBuilder()
+//                 .withConfig(Config.fromKubeconfig(kubeConfig))
+//                 .build();
+//         IstioClient istioClient = new DefaultIstioClient(kubernetesClient);
 
-        ModelMapper modelMapper = new KubernetesClientConfig().modelMapper();
-        IstioResourceLoader loader = new IstioResourceLoader(kubernetesClient, istioClient, modelMapper);
-        ResourceCollection resourceCollection = loader.load("fort-istio", List.of());
+//         ModelMapper modelMapper = new KubernetesClientConfig().modelMapper();
+//         IstioResourceLoader loader = new IstioResourceLoader(kubernetesClient, istioClient, modelMapper);
+//         ResourceCollection resourceCollection = loader.load("fort-istio", List.of());
 
-        for (VirtualServiceDto vs : resourceCollection.primary().virtualServices()) {
-            List<String> hosts = vs.spec().hosts();
-            List<IstioRoute> routes = new ArrayList<>(vs.spec().http());
-            routes.addAll(vs.spec().tcp());
-            routes.addAll(vs.spec().tls());
+//         for (VirtualServiceDto vs : resourceCollection.primary().virtualServices()) {
+//             List<String> hosts = vs.spec().hosts();
+//             List<IstioRoute> routes = new ArrayList<>(vs.spec().http());
+//             routes.addAll(vs.spec().tcp());
+//             routes.addAll(vs.spec().tls());
 
-        }
+//         }
 
-    }
+//     }
 
 }

@@ -21,7 +21,7 @@ public class TopologyController {
 
     @GetMapping("/topology")
     public Map<String, Object> topology(@RequestParam(defaultValue = "fort-isito") String namespace) {
-        TopologyGraph topologyGraph = routeExplorerService.buildTopologyGraph(namespace);
+        TopologyGraph topologyGraph = routeExplorerService.buildTopology(namespace);
         List<Map<String, Object>> nodes = topologyGraph.getNodes().values().stream()
                 .map(n -> Map.of("id", n.getId(), "type", n.getType().name(), "meta", n.getMetadata()))
                 .toList();
