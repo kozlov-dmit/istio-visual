@@ -69,10 +69,9 @@ public class GraphBuilder {
 
         private void registerPods() {
             for (var pod : collection.primary().pods()) {
-                PodDto podDto = pod;
-                ObjectMetadataDto metadata = podDto.metadata();
-                PodSpecDto spec = podDto.spec();
-                PodStatusDto status = podDto.status();
+                ObjectMetadataDto metadata = pod.metadata();
+                PodSpecDto spec = pod.spec();
+                PodStatusDto status = pod.status();
                 String namespace = metadata.namespace();
                 String podName = metadata.name();
                 if (podName == null) {
@@ -84,7 +83,7 @@ public class GraphBuilder {
                 for (ContainerDto container : containersSpec) {
                     String containerName = Objects.toString(container.name(), "container");
                     String image = Objects.toString(container.image(), "");
-                    boolean sidecar = isSidecarContainer(podDto, containerName, image);
+                    boolean sidecar = isSidecarContainer(pod, containerName, image);
                     String nodeId = "container:%s/%s/%s".formatted(namespace, podName, containerName);
                     Map<String, Object> properties = new LinkedHashMap<>();
                     properties.put("pod", podName);
@@ -95,7 +94,7 @@ public class GraphBuilder {
                     properties.put("displayName", containerName + "@" + podName);
                     properties.put("labels", labels);
                     if (status != null) {
-                        properties.put("status", status);
+                        properties.put("status", asMap(status));
                     }
                     GraphNode node = new GraphNode(nodeId, sidecar ? "sidecarContainer" : "appContainer", properties);
                     nodeMap.put(nodeId, node);
@@ -128,9 +127,8 @@ public class GraphBuilder {
 
         private void processVirtualServices() {
             for (var vs : collection.primary().virtualServices()) {
-                VirtualServiceDto vsDto = vs;
-                ObjectMetadataDto metadata = vsDto.metadata();
-                VirtualServiceSpecDto spec = vsDto.spec();
+                ObjectMetadataDto metadata = vs.metadata();
+                VirtualServiceSpecDto spec = vs.spec();
                 if (spec == null) {
                     warnings.add("VirtualService missing spec: " + metadata);
                     continue;

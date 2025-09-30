@@ -1,8 +1,9 @@
 package io.github.istiorouteexplorer.model.istio;
 
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 import java.util.Objects;
-import lombok.NoArgsConstructor;
 
 /**
  * DTO representing the HTTP route configuration section of a VirtualService.
@@ -10,12 +11,22 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class HttpRouteDto implements IstioRoute {
 
+    private List<HttpMatchRequestDto> match;
     private HttpRouteDestinationDto mirror;
     private List<HttpRouteDestinationDto> route;
 
-    public HttpRouteDto(HttpRouteDestinationDto mirror, List<HttpRouteDestinationDto> route) {
+    public HttpRouteDto(List<HttpMatchRequestDto> match, HttpRouteDestinationDto mirror, List<HttpRouteDestinationDto> route) {
+        this.match = match;
         this.mirror = mirror;
         this.route = route;
+    }
+
+    public List<HttpMatchRequestDto> match() {
+        if (match == null) {
+            return List.of();
+        } else {
+            return match;
+        }
     }
 
     public HttpRouteDestinationDto mirror() {
@@ -45,10 +56,9 @@ public class HttpRouteDto implements IstioRoute {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder("HttpRouteDto{");
-        builder.append("mirror=").append(mirror);
-        builder.append(", route=").append(route);
-        builder.append('}');
-        return builder.toString();
+        return "HttpRouteDto{" + "match=" + match +
+                "mirror=" + mirror +
+                ", route=" + route +
+                '}';
     }
 }

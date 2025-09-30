@@ -2,18 +2,19 @@ package io.github.istiorouteexplorer.service;
 
 import io.github.istiorouteexplorer.config.AppProperties;
 import io.github.istiorouteexplorer.graph.GraphBuilder;
+import io.github.istiorouteexplorer.graph.TopologyBuilder;
 import io.github.istiorouteexplorer.kube.IstioResourceLoader;
 import io.github.istiorouteexplorer.model.GraphResponse;
 import io.github.istiorouteexplorer.model.ResourceCollection;
+import io.github.istiorouteexplorer.model.TopologyGraph;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.stereotype.Service;
 
 @Service
 public class RouteExplorerService {
@@ -21,12 +22,25 @@ public class RouteExplorerService {
     private final AppProperties properties;
     private final IstioResourceLoader loader;
     private final GraphBuilder graphBuilder;
+    private final TopologyBuilder topologyBuilder;
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public RouteExplorerService(AppProperties properties, IstioResourceLoader loader, GraphBuilder graphBuilder) {
+    public RouteExplorerService(AppProperties properties, IstioResourceLoader loader, GraphBuilder graphBuilder, TopologyBuilder topologyBuilder) {
         this.properties = properties;
         this.loader = loader;
         this.graphBuilder = graphBuilder;
+        this.topologyBuilder = topologyBuilder;
+    }
+
+    public TopologyGraph buildTopologyGraph(String namespace) {
+        String ns = (namespace == null || namespace.isBlank()) ? properties.getNamespace() : namespace;
+        try {
+            ResourceCollection resourceCollection = loader.load(ns, properties.getExtraNamespaces());
+            return topologyBuilder.build(resourceCollection);
+        }
+        catch (IOException e) {
+            throw new RouteExplorerException("Failed to load resources for namespace " + ns, e);
+        }
     }
 
     public GraphResponse buildGraph(String namespace) {

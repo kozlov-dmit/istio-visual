@@ -1,10 +1,7 @@
 package io.github.istiorouteexplorer.model;
 
-import io.github.istiorouteexplorer.model.istio.DestinationRuleDto;
-import io.github.istiorouteexplorer.model.istio.GatewayDto;
-import io.github.istiorouteexplorer.model.istio.ServiceEntryDto;
-import io.github.istiorouteexplorer.model.istio.VirtualServiceDto;
-import io.github.istiorouteexplorer.model.istio.WorkloadEntryDto;
+import io.github.istiorouteexplorer.model.istio.*;
+import io.github.istiorouteexplorer.model.kubernetes.EndpointDto;
 import io.github.istiorouteexplorer.model.kubernetes.PodDto;
 import io.github.istiorouteexplorer.model.kubernetes.ServiceDto;
 
@@ -24,8 +21,10 @@ public class NamespaceResources {
     private List<DestinationRuleDto> destinationRules;
     private List<GatewayDto> gateways;
     private List<ServiceEntryDto> serviceEntries;
+    private List<EnvoyFilterDto> envoyFilters;
     private List<WorkloadEntryDto> workloadEntries;
     private List<ServiceDto> services;
+    private List<EndpointDto> endpoints;
     private List<PodDto> pods;
 
     public NamespaceResources(
@@ -34,8 +33,10 @@ public class NamespaceResources {
             List<DestinationRuleDto> destinationRules,
             List<GatewayDto> gateways,
             List<ServiceEntryDto> serviceEntries,
+            List<EnvoyFilterDto> envoyFilters,
             List<WorkloadEntryDto> workloadEntries,
             List<ServiceDto> services,
+            List<EndpointDto> endpoints,
             List<PodDto> pods
     ) {
         this.namespace = namespace;
@@ -43,8 +44,10 @@ public class NamespaceResources {
         this.destinationRules = List.copyOf(destinationRules);
         this.gateways = List.copyOf(gateways);
         this.serviceEntries = List.copyOf(serviceEntries);
+        this.envoyFilters = List.copyOf(envoyFilters);
         this.workloadEntries = List.copyOf(workloadEntries);
         this.services = List.copyOf(services);
+        this.endpoints = List.copyOf(endpoints);
         this.pods = List.copyOf(pods);
     }
 
@@ -68,12 +71,20 @@ public class NamespaceResources {
         return serviceEntries;
     }
 
+    public List<EnvoyFilterDto> envoyFilters() {
+        return envoyFilters;
+    }
+
     public List<WorkloadEntryDto> workloadEntries() {
         return workloadEntries;
     }
 
     public List<ServiceDto> services() {
         return services;
+    }
+
+    public List<EndpointDto> endpoints() {
+        return endpoints;
     }
 
     public List<PodDto> pods() {

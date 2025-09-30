@@ -10,16 +10,22 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class VirtualServiceSpecDto {
 
+    private List<String> gateways;
     private List<String> hosts;
     private List<HttpRouteDto> http;
     private List<TcpRouteDto> tcp;
     private List<TlsRouteDto> tls;
 
-    public VirtualServiceSpecDto(List<String> hosts, List<HttpRouteDto> http, List<TcpRouteDto> tcp, List<TlsRouteDto> tls) {
+    public VirtualServiceSpecDto(List<String> gateways, List<String> hosts, List<HttpRouteDto> http, List<TcpRouteDto> tcp, List<TlsRouteDto> tls) {
+        this.gateways = gateways;
         this.hosts = hosts;
         this.http = http;
         this.tcp = tcp;
         this.tls = tls;
+    }
+
+    public List<String> gateways() {
+        return gateways;
     }
 
     public List<String> hosts() {
@@ -59,12 +65,11 @@ public class VirtualServiceSpecDto {
 
     @Override
     public String toString() {
-        StringBuilder builder = new StringBuilder("VirtualServiceSpecDto{");
-        builder.append("hosts=").append(hosts);
-        builder.append(", http=").append(http);
-        builder.append(", tcp=").append(tcp);
-        builder.append(", tls=").append(tls);
-        builder.append('}');
-        return builder.toString();
+        return "VirtualServiceSpecDto{" + "gateways=" + gateways +
+                "hosts=" + hosts +
+                ", http=" + http +
+                ", tcp=" + tcp +
+                ", tls=" + tls +
+                '}';
     }
 }

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import io.github.istiorouteexplorer.config.AppProperties;
 import io.github.istiorouteexplorer.graph.GraphBuilder;
+import io.github.istiorouteexplorer.graph.TopologyBuilder;
 import io.github.istiorouteexplorer.kube.IstioResourceLoader;
 import io.github.istiorouteexplorer.model.GraphEdge;
 import io.github.istiorouteexplorer.model.GraphNode;
@@ -30,6 +31,7 @@ class RouteExplorerServiceTest {
     private AppProperties properties;
     private IstioResourceLoader loader;
     private GraphBuilder graphBuilder;
+    private TopologyBuilder topologyBuilder;
     private RouteExplorerService service;
 
     @BeforeEach
@@ -40,7 +42,8 @@ class RouteExplorerServiceTest {
         properties.setExtraNamespaces(List.of("shared"));
         loader = mock(IstioResourceLoader.class);
         graphBuilder = mock(GraphBuilder.class);
-        service = new RouteExplorerService(properties, loader, graphBuilder);
+        topologyBuilder = mock(TopologyBuilder.class);
+        service = new RouteExplorerService(properties, loader, graphBuilder, topologyBuilder);
     }
 
     @Test
@@ -98,6 +101,8 @@ class RouteExplorerServiceTest {
     private ResourceCollection emptyCollection(String namespace) {
         NamespaceResources resources = new NamespaceResources(
                 namespace,
+                List.of(),
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

@@ -94,7 +94,9 @@ class GraphBuilderTest {
                 List.of(),
                 List.of(),
                 List.of(),
+                List.of(),
                 services,
+                List.of(),
                 pods
         );
     }
@@ -139,8 +141,9 @@ class GraphBuilderTest {
         ObjectMetadataDto metadata = new ObjectMetadataDto(name, namespace, Map.of(), Map.of());
         DestinationDto destination = new DestinationDto(destinationHost, null, null);
         HttpRouteDestinationDto primaryRoute = new HttpRouteDestinationDto(destination, 100);
-        HttpRouteDto httpRoute = new HttpRouteDto(null, List.of(primaryRoute));
+        HttpRouteDto httpRoute = new HttpRouteDto(null, null, List.of(primaryRoute));
         VirtualServiceSpecDto spec = new VirtualServiceSpecDto(
+                List.of(),
                 List.of(host),
                 List.of(httpRoute),
                 List.of(),

@@ -10,15 +10,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class TlsRouteDto implements IstioRoute {
 
-    private List<TlsMatchDto> match;
+    private List<TlsMatchRequestDto> match;
     private List<TcpRouteDestinationDto> route;
 
-    public TlsRouteDto(List<TlsMatchDto> match, List<TcpRouteDestinationDto> route) {
+    public TlsRouteDto(List<TlsMatchRequestDto> match, List<TcpRouteDestinationDto> route) {
         this.match = match;
         this.route = route;
     }
 
-    public List<TlsMatchDto> match() {
+    public List<TlsMatchRequestDto> match() {
         return match;
     }
 

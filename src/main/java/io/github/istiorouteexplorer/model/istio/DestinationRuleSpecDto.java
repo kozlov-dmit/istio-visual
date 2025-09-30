@@ -1,8 +1,9 @@
 package io.github.istiorouteexplorer.model.istio;
 
+import lombok.NoArgsConstructor;
+
 import java.util.List;
 import java.util.Objects;
-import lombok.NoArgsConstructor;
 
 /**
  * DTO holding the specification portion of an Istio DestinationRule.
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(force = true)
 public class DestinationRuleSpecDto {
 
+    private List<SubsetDto> subsets;
     private List<String> exportTo;
     private String host;
     private TrafficPolicyDto trafficPolicy;
@@ -20,6 +22,10 @@ public class DestinationRuleSpecDto {
         this.host = host;
         this.trafficPolicy = trafficPolicy;
         this.workloadSelector = workloadSelector;
+    }
+
+    public List<SubsetDto> subsets() {
+        return subsets;
     }
 
     public List<String> exportTo() {

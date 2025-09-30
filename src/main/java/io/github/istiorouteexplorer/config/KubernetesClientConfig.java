@@ -125,6 +125,8 @@ public class KubernetesClientConfig {
         modelMapper.createTypeMap(io.fabric8.istio.api.networking.v1beta1.Gateway.class, GatewayDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Gateway.class, GatewaySpecDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Server.class, ServerDto.class);
+        modelMapper.createTypeMap(io.fabric8.kubernetes.api.model.discovery.v1beta1.Endpoint.class, EndpointDto.class);
+        modelMapper.createTypeMap(io.fabric8.kubernetes.api.model.discovery.v1beta1.EndpointConditions.class, EndpointConditionDto.class);
         return modelMapper;
     }
 
