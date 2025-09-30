@@ -1,4 +1,4 @@
-﻿package io.github.istiorouteexplorer.model;
+package io.github.istiorouteexplorer.model;
 
 import java.util.List;
 import java.util.Objects;

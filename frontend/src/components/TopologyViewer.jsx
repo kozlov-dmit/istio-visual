@@ -11,7 +11,9 @@ export default function TopologyViewer({ initialNamespace = 'default' }) {
   const [probeResult, setProbeResult] = useState(null);
   const fgRef = useRef();
 
-  useEffect(() => fetchTopology(namespace), []);
+  useEffect(() => {
+    fetchTopology(namespace);
+  }, []);
 
   async function fetchTopology(ns) {
     setLoading(true); setError(null); setSelected(null);

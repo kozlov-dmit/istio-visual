@@ -34,7 +34,9 @@ export default function TopologyExplorer({ initialNamespace = 'default' }) {
   const [pathComputeLoading, setPathComputeLoading] = useState(false);
   const fgRef = useRef();
 
-  useEffect(() => load(namespace), []);
+  useEffect(() => {
+    load(namespace);
+  }, []);
 
   async function load(ns) {
     setLoading(true); setError(null); setSelectedNode(null); setTargetNode(null); setPaths([]);

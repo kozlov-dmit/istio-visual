@@ -1,4 +1,4 @@
-﻿package io.github.istiorouteexplorer.model;
+package io.github.istiorouteexplorer.model;
 
 import java.util.Objects;
 import lombok.NoArgsConstructor;
