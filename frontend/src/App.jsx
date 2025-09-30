@@ -1,6 +1,6 @@
 import React from 'react';
-import TopologyViewer from './components/TopologyViewer';
+import TopologyExplorer from './components/TopologyExplorer';
 
 export default function App() {
-  return <TopologyViewer initialNamespace="default" />;
+  return <TopologyExplorer initialNamespace="default" />;
 }
