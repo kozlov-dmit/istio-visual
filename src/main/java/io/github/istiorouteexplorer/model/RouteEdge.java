@@ -15,6 +15,7 @@ public class RouteEdge {
     private Long port;
     private List<MatchCondition> matches;
     private List<String> notes = new ArrayList<>();
+    private Map<String,Object> meta = new HashMap<>();
     private Map<String, Integer> weights = new HashMap<>();
     private final List<Diagnostic> diagnostics = new ArrayList<>();
 
@@ -30,5 +31,18 @@ public class RouteEdge {
         this.protocol = protocol;
         this.port = port;
         this.matches = matches;
+    }
+
+    public RouteEdge(
+            String fromId,
+            String toId,
+            String protocol,
+            Long port
+    ) {
+        this.fromId = fromId;
+        this.toId = toId;
+        this.protocol = protocol;
+        this.port = port;
+        this.matches = new ArrayList<>();
     }
 }

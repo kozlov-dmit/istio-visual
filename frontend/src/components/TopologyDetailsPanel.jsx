@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 // Fetches /api/topology/details-enhanced and renders it in a human-friendly format.
 // This file has been verified for correct braces and syntax.
 
-export default function TopologyDetailsPanel({ namespace = 'default', nodeId, onClose }) {
+export default function TopologyDetailsPanelImproved({ namespace = 'default', nodeId, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

@@ -1,6 +1,6 @@
 import React from 'react';
-import TopologyExplorer from './components/TopologyExplorer';
+import TopologyCanvasImproved from './components/TopologyCanvasImproved';
 
 export default function App() {
-  return <TopologyExplorer initialNamespace="default" />;
+  return <TopologyCanvasImproved initialNamespace="default" />;
 }
