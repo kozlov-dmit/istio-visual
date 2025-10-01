@@ -297,7 +297,8 @@ export default function TopologyCanvas({ initialNamespace = 'default' }) {
             </svg>
           </div>
 
-          <div style={{ width: 380 }}>
+            <TopologyDetailsPanel namespace={currentNamespace} nodeId={selectedNodeId} onClose={() => setSelected(null)} />
+          {/* <div style={{ width: 380 }}>
             <div style={{ background: '#fff', borderRadius: 8, padding: 12 }}>
               <h3 style={{ margin: 0 }}>Details</h3>
               <hr style={{ margin: '8px 0' }} />
@@ -334,7 +335,7 @@ export default function TopologyCanvas({ initialNamespace = 'default' }) {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
         </div>
       )}
