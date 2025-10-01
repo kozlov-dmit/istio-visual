@@ -1,6 +1,6 @@
 import React from 'react';
-import TopologyCanvasImproved from './components/TopologyCanvasImproved';
+import TopologyCanvasReadable from './components/TopologyCanvasReadable';
 
 export default function App() {
-  return <TopologyCanvasImproved initialNamespace="default" />;
+  return <TopologyCanvasReadable initialNamespace="default" />;
 }
