@@ -303,3 +303,5 @@ export default function TopologyCanvasReadable({ initialNamespace = 'default' })
     </div>
   );
 }
+
+const controlBtn = { padding: '6px 10px', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer', border: 'none' };
