@@ -92,6 +92,7 @@ public class KubernetesClientConfig {
         modelMapper.createTypeMap(io.fabric8.istio.api.networking.v1beta1.VirtualService.class, VirtualServiceDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.VirtualService.class, VirtualServiceSpecDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPRoute.class, HttpRouteDto.class);
+        modelMapper.createTypeMap(HTTPMatchRequest.class, HttpMatchRequestDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.HTTPRouteDestination.class, HttpRouteDestinationDto.class);
         modelMapper.createTypeMap(io.fabric8.istio.api.api.networking.v1alpha3.Destination.class, DestinationDto.class)
                 .setConverter(ctx -> {

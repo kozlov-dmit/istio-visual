@@ -1,13 +1,18 @@
 package io.github.istiorouteexplorer.model.istio;
 
-import java.util.List;
-import java.util.Objects;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * DTO describing the Istio client TLS configuration extracted from cluster resources.
  */
+@Data
 @NoArgsConstructor(force = true)
+@AllArgsConstructor
 public class ClientTlsSettingsDto {
 
     private String caCertificates;
@@ -20,91 +25,66 @@ public class ClientTlsSettingsDto {
     private List<String> subjectAltNames;
     private ClientTlsMode mode;
 
-    public ClientTlsSettingsDto(String caCertificates, String caCrl, String clientCertificate, String credentialName, Boolean insecureSkipVerify, String privateKey, String sni, List<String> subjectAltNames, ClientTlsMode mode) {
-        this.caCertificates = caCertificates;
-        this.caCrl = caCrl;
-        this.clientCertificate = clientCertificate;
-        this.credentialName = credentialName;
-        this.insecureSkipVerify = insecureSkipVerify;
-        this.privateKey = privateKey;
-        this.sni = sni;
-        this.subjectAltNames = subjectAltNames;
-        this.mode = mode;
-    }
+    public List<String> merge(ClientTlsSettingsDto other) {
+        List<String> errors = new ArrayList<>();
 
-    public String caCertificates() {
-        return caCertificates;
-    }
-
-    public String caCrl() {
-        return caCrl;
-    }
-
-    public String clientCertificate() {
-        return clientCertificate;
-    }
-
-    public String credentialName() {
-        return credentialName;
-    }
-
-    public Boolean insecureSkipVerify() {
-        return insecureSkipVerify;
-    }
-
-    public String privateKey() {
-        return privateKey;
-    }
-
-    public String sni() {
-        return sni;
-    }
-
-    public List<String> subjectAltNames() {
-        return subjectAltNames;
-    }
-
-    public ClientTlsMode mode() {
-        return mode;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
+        if (caCertificates == null && other.getCaCertificates() != null) {
+            caCertificates = other.getCaCertificates();
         }
-        if (!(o instanceof ClientTlsSettingsDto that)) {
-            return false;
+        else if (caCertificates != null && other.getCaCertificates() != null && !caCertificates.equals(other.getCaCertificates())) {
+            errors.add("caCertificates already set, but found another value");
         }
-        return Objects.equals(caCertificates, that.caCertificates) &&
-            Objects.equals(caCrl, that.caCrl) &&
-            Objects.equals(clientCertificate, that.clientCertificate) &&
-            Objects.equals(credentialName, that.credentialName) &&
-            Objects.equals(insecureSkipVerify, that.insecureSkipVerify) &&
-            Objects.equals(privateKey, that.privateKey) &&
-            Objects.equals(sni, that.sni) &&
-            Objects.equals(subjectAltNames, that.subjectAltNames) &&
-            Objects.equals(mode, that.mode);
+
+        if (caCrl == null && other.getCaCrl() != null) {
+            caCrl = other.getCaCrl();
+        }
+        else if (caCrl != null && other.getCaCrl() != null && !caCrl.equals(other.getCaCrl())) {
+            errors.add("caCrl already set, but found another value");
+        }
+        if (clientCertificate == null && other.getClientCertificate() != null) {
+            clientCertificate = other.getClientCertificate();
+        }
+        else if (clientCertificate != null && other.getClientCertificate() != null && !clientCertificate.equals(other.getClientCertificate())) {
+            errors.add("clientCertificate already set, but found another value");
+        }
+        if (credentialName == null && other.getCredentialName() != null) {
+            credentialName = other.getCredentialName();
+        }
+        else if (credentialName != null && other.getCredentialName() != null && !credentialName.equals(other.getCredentialName())) {
+            errors.add("credentialName already set, but found another value");
+        }
+        if (insecureSkipVerify == null && other.getInsecureSkipVerify() != null) {
+            insecureSkipVerify = other.getInsecureSkipVerify();
+        }
+        else if (insecureSkipVerify != null && other.getInsecureSkipVerify() != null && !insecureSkipVerify.equals(other.getInsecureSkipVerify())) {
+            errors.add("insecureSkipVerify already set, but found another value");
+        }
+        if (privateKey == null && other.getPrivateKey() != null) {
+            privateKey = other.getPrivateKey();
+        }
+        else if (privateKey != null && other.getPrivateKey() != null && !privateKey.equals(other.getPrivateKey())) {
+            errors.add("privateKey already set, but found another value");
+        }
+        if (sni == null && other.getSni() != null) {
+            sni = other.getSni();
+        }
+        else if (sni != null && other.getSni() != null && !sni.equals(other.getSni())) {
+            errors.add("sni already set, but found another value");
+        }
+        if (subjectAltNames == null && other.getSubjectAltNames() != null) {
+            subjectAltNames = other.getSubjectAltNames();
+        }
+        else if (subjectAltNames != null && other.getSubjectAltNames() != null) {
+            subjectAltNames.addAll(other.getSubjectAltNames());
+        }
+        if (mode == null && other.getMode() != null) {
+            mode = other.getMode();
+        }
+        else if (mode != null && other.getMode() != null && !mode.equals(other.getMode())) {
+            errors.add("mode already set as" + mode + ", but found another value " + other.getMode());
+        }
+
+        return errors;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(caCertificates, caCrl, clientCertificate, credentialName, insecureSkipVerify, privateKey, sni, subjectAltNames, mode);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder("ClientTlsSettingsDto{");
-        builder.append("caCertificates=").append(caCertificates);
-        builder.append(", caCrl=").append(caCrl);
-        builder.append(", clientCertificate=").append(clientCertificate);
-        builder.append(", credentialName=").append(credentialName);
-        builder.append(", insecureSkipVerify=").append(insecureSkipVerify);
-        builder.append(", privateKey=").append(privateKey);
-        builder.append(", sni=").append(sni);
-        builder.append(", subjectAltNames=").append(subjectAltNames);
-        builder.append(", mode=").append(mode);
-        builder.append('}');
-        return builder.toString();
-    }
 }

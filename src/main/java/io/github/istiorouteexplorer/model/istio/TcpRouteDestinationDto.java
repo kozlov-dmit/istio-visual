@@ -1,52 +1,25 @@
 package io.github.istiorouteexplorer.model.istio;
-import java.util.Objects;
+
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
  * DTO describing the destination target used by an Istio TCP route.
  */
+@Data
 @NoArgsConstructor(force = true)
 public class TcpRouteDestinationDto implements RouteDestinationDto {
 
     private DestinationDto destination;
     private Integer weight;
 
-    public TcpRouteDestinationDto(DestinationDto destination, Integer weight) {
-        this.destination = destination;
-        this.weight = weight;
-    }
-
-    public DestinationDto destination() {
-        return destination;
-    }
-
-    public Integer weight() {
-        return weight;
+    @Override
+    public String getHost() {
+        return destination != null ? destination.getHost() : null;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof TcpRouteDestinationDto that)) {
-            return false;
-        }
-        return Objects.equals(destination, that.destination) &&
-            Objects.equals(weight, that.weight);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(destination, weight);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder("TcpRouteDestinationDto{");
-        builder.append("destination=").append(destination);
-        builder.append(", weight=").append(weight);
-        builder.append('}');
-        return builder.toString();
+    public Long getPort() {
+        return destination != null ? destination.getPort() : null;
     }
 }

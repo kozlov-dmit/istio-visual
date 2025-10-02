@@ -1,23 +1,21 @@
 package io.github.istiorouteexplorer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
 import io.fabric8.istio.api.api.networking.v1alpha3.Destination;
 import io.fabric8.istio.api.api.networking.v1alpha3.HTTPRoute;
 import io.fabric8.istio.api.api.networking.v1alpha3.HTTPRouteDestination;
-import io.fabric8.istio.api.networking.v1beta1.VirtualService;
 import io.fabric8.istio.api.api.networking.v1alpha3.PortSelector;
-
+import io.fabric8.istio.api.networking.v1beta1.VirtualService;
 import io.fabric8.kubernetes.api.model.ObjectMeta;
 import io.github.istiorouteexplorer.config.KubernetesClientConfig;
 import io.github.istiorouteexplorer.model.istio.HttpRouteDestinationDto;
 import io.github.istiorouteexplorer.model.istio.HttpRouteDto;
 import io.github.istiorouteexplorer.model.istio.VirtualServiceDto;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.modelmapper.ModelMapper;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class MapperTest {
 
@@ -55,22 +53,22 @@ class MapperTest {
         VirtualServiceDto dto = mapper.map(virtualService, VirtualServiceDto.class);
 
         assertNotNull(dto);
-        assertEquals("reviews", dto.metadata().name());
-        assertEquals("bookinfo", dto.metadata().namespace());
-        assertEquals(List.of("reviews"), dto.spec().hosts());
+        assertEquals("reviews", dto.getMetadata().getName());
+        assertEquals("bookinfo", dto.getMetadata().getNamespace());
+        assertEquals(List.of("reviews"), dto.getSpec().getHosts());
 
-        List<HttpRouteDto> httpRoutes = dto.spec().http();
+        List<HttpRouteDto> httpRoutes = dto.getSpec().getHttp();
         assertNotNull(httpRoutes);
         assertEquals(1, httpRoutes.size());
         HttpRouteDto mappedRoute = httpRoutes.get(0);
-        assertNull(mappedRoute.mirror());
-        List<HttpRouteDestinationDto> mappedDestinations = mappedRoute.route();
+        assertNull(mappedRoute.getMatch());
+        List<HttpRouteDestinationDto> mappedDestinations = mappedRoute.getRoute();
         assertNotNull(mappedDestinations);
         assertEquals(1, mappedDestinations.size());
         HttpRouteDestinationDto mappedDestination = mappedDestinations.get(0);
-        assertEquals("ratings", mappedDestination.destination().host());
-        assertEquals(9080L, mappedDestination.destination().port());
-        assertEquals("v1", mappedDestination.destination().subset());
-        assertEquals(80, mappedDestination.weight());
+        assertEquals("ratings", mappedDestination.getDestination().getHost());
+        assertEquals(9080L, mappedDestination.getDestination().getPort());
+        assertEquals("v1", mappedDestination.getDestination().getSubset());
+        assertEquals(80, mappedDestination.getWeight());
     }
 }

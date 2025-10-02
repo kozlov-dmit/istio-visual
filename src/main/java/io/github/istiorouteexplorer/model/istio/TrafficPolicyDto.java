@@ -1,44 +1,29 @@
 package io.github.istiorouteexplorer.model.istio;
-import java.util.Objects;
+
+import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * DTO aggregating traffic policy settings such as load balancing, connection pools, and TLS.
  */
+@Data
 @NoArgsConstructor(force = true)
 public class TrafficPolicyDto {
 
     private ClientTlsSettingsDto tls;
 
-    public TrafficPolicyDto(ClientTlsSettingsDto tls) {
-        this.tls = tls;
-    }
-
-    public ClientTlsSettingsDto tls() {
-        return tls;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
+    public List<String> merge(TrafficPolicyDto other) {
+        List<String> errors = new ArrayList<>();
+        if (tls == null) {
+            tls = other.tls;
         }
-        if (!(o instanceof TrafficPolicyDto that)) {
-            return false;
+        else if (other.tls != null && !tls.equals(other.tls)) {
+            errors.addAll(tls.merge(other.tls));
         }
-        return Objects.equals(tls, that.tls);
+        return errors;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(tls);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder("TrafficPolicyDto{");
-        builder.append("tls=").append(tls);
-        builder.append('}');
-        return builder.toString();
-    }
 }

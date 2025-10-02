@@ -93,6 +93,7 @@ export default function TopologyExplorer({ initialNamespace = 'default' }) {
   // BFS / DFS for simple paths limited by depth and maxPaths
   function computeAllPaths(startIds, endId, depthLimitLocal = depthLimit, maxPathsLocal = maxPaths) {
     setPathComputeLoading(true);
+    console.log("start computing path: startIds=", startIds, "endId=", endId, "depthLimit=", depthLimitLocal, "maxPaths=", maxPathsLocal);
     try {
       const results = [];
       const visitedGlobal = new Set();
@@ -103,6 +104,7 @@ export default function TopologyExplorer({ initialNamespace = 'default' }) {
         while (stack.length > 0 && results.length < maxPathsLocal) {
           const frame = stack.pop();
           const cur = frame.node;
+          console.log("cur = " + frame);
           if (frame.pathNodes.length - 1 > depthLimitLocal) continue;
 
           // if we've reached end (if endId specified) or this is external node (when no end specified)
@@ -124,7 +126,7 @@ export default function TopologyExplorer({ initialNamespace = 'default' }) {
             }, null);
             results.push(path);
           }
-
+            console.log(results)
           // continue exploring if depth allows
           if (frame.pathNodes.length - 1 >= depthLimitLocal) continue;
 
@@ -282,7 +284,7 @@ export default function TopologyExplorer({ initialNamespace = 'default' }) {
                     <label className="text-xs">Target node (optional, leave empty to target externals)</label>
                     <select className="w-full border rounded px-2 py-1 text-sm" value={targetNode||''} onChange={e=>setTargetNode(e.target.value||null)}>
                       <option value="">-- any external --</option>
-                      {data.nodes.filter(n=>n.id.startsWith('external:')||n.type==='SERVICEENTRY').map(n=> <option key={n.id} value={n.id}>{short(n.id)}</option>)}
+                      {data.nodes.filter(n=>n.id.startsWith('external:')||n.type==='EXTERNAL').map(n=> <option key={n.id} value={n.id}>{short(n.id)}</option>)}
                     </select>
                   </div>
 

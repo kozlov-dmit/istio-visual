@@ -1,18 +1,17 @@
 package io.github.istiorouteexplorer.model;
 
 import io.github.istiorouteexplorer.model.istio.*;
-import io.github.istiorouteexplorer.model.kubernetes.EndpointDto;
-import io.github.istiorouteexplorer.model.kubernetes.PodDto;
-import io.github.istiorouteexplorer.model.kubernetes.ServiceDto;
+import io.github.istiorouteexplorer.model.kubernetes.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.Objects;
-import lombok.NoArgsConstructor;
 
 /**
  * Aggregates all Kubernetes and Istio resources discovered within a namespace so the graph builder
  * can construct traffic topology and metadata.
  */
+@Data
 @NoArgsConstructor(force = true)
 public class NamespaceResources {
 
@@ -25,6 +24,8 @@ public class NamespaceResources {
     private List<WorkloadEntryDto> workloadEntries;
     private List<ServiceDto> services;
     private List<EndpointDto> endpoints;
+    private List<DeploymentDto> deployments;
+    private List<ReplicaSetDto> replicaSets;
     private List<PodDto> pods;
 
     public NamespaceResources(
@@ -37,6 +38,8 @@ public class NamespaceResources {
             List<WorkloadEntryDto> workloadEntries,
             List<ServiceDto> services,
             List<EndpointDto> endpoints,
+            List<DeploymentDto> deployments,
+            List<ReplicaSetDto> replicaSets,
             List<PodDto> pods
     ) {
         this.namespace = namespace;
@@ -48,85 +51,9 @@ public class NamespaceResources {
         this.workloadEntries = List.copyOf(workloadEntries);
         this.services = List.copyOf(services);
         this.endpoints = List.copyOf(endpoints);
+        this.deployments = List.copyOf(deployments);
+        this.replicaSets = List.copyOf(replicaSets);
         this.pods = List.copyOf(pods);
     }
 
-    public String namespace() {
-        return namespace;
-    }
-
-    public List<VirtualServiceDto> virtualServices() {
-        return virtualServices;
-    }
-
-    public List<DestinationRuleDto> destinationRules() {
-        return destinationRules;
-    }
-
-    public List<GatewayDto> gateways() {
-        return gateways;
-    }
-
-    public List<ServiceEntryDto> serviceEntries() {
-        return serviceEntries;
-    }
-
-    public List<EnvoyFilterDto> envoyFilters() {
-        return envoyFilters;
-    }
-
-    public List<WorkloadEntryDto> workloadEntries() {
-        return workloadEntries;
-    }
-
-    public List<ServiceDto> services() {
-        return services;
-    }
-
-    public List<EndpointDto> endpoints() {
-        return endpoints;
-    }
-
-    public List<PodDto> pods() {
-        return pods;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof NamespaceResources that)) {
-            return false;
-        }
-        return Objects.equals(namespace, that.namespace)
-                && Objects.equals(virtualServices, that.virtualServices)
-                && Objects.equals(destinationRules, that.destinationRules)
-                && Objects.equals(gateways, that.gateways)
-                && Objects.equals(serviceEntries, that.serviceEntries)
-                && Objects.equals(workloadEntries, that.workloadEntries)
-                && Objects.equals(services, that.services)
-                && Objects.equals(pods, that.pods);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(namespace, virtualServices, destinationRules, gateways,
-                serviceEntries, workloadEntries, services, pods);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder("NamespaceResources{");
-        builder.append("namespace='").append(namespace).append('\'');
-        builder.append(", virtualServices=").append(virtualServices);
-        builder.append(", destinationRules=").append(destinationRules);
-        builder.append(", gateways=").append(gateways);
-        builder.append(", serviceEntries=").append(serviceEntries);
-        builder.append(", workloadEntries=").append(workloadEntries);
-        builder.append(", services=").append(services);
-        builder.append(", pods=").append(pods);
-        builder.append('}');
-        return builder.toString();
-    }
 }

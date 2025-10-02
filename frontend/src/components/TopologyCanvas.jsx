@@ -1,5 +1,6 @@
 // src/components/TopologyCanvasImproved.jsx
 import React, { useEffect, useRef, useState } from 'react';
+import TopologyDetailsPanel from './TopologyDetailsPanel';
 
 /**
  * TopologyCanvasImproved
@@ -297,8 +298,7 @@ export default function TopologyCanvas({ initialNamespace = 'default' }) {
             </svg>
           </div>
 
-            <TopologyDetailsPanel namespace={currentNamespace} nodeId={selectedNodeId} onClose={() => setSelected(null)} />
-          {/* <div style={{ width: 380 }}>
+          <div style={{ width: 380 }}>
             <div style={{ background: '#fff', borderRadius: 8, padding: 12 }}>
               <h3 style={{ margin: 0 }}>Details</h3>
               <hr style={{ margin: '8px 0' }} />
@@ -307,11 +307,7 @@ export default function TopologyCanvas({ initialNamespace = 'default' }) {
                   <div style={{ fontWeight: 700, marginBottom: 8 }}>{short(selected)}</div>
                   <div style={{ fontSize: 13, color: '#444' }}>Detail info (click nodes to load)</div>
                   <div style={{ marginTop: 8 }}>
-                    {details ? (
-                      <pre style={{ whiteSpace: 'pre-wrap', maxHeight: 380, overflow: 'auto', background: '#fbfbfb', padding: 8 }}>{JSON.stringify(details, null, 2)}</pre>
-                    ) : (
-                      <div style={{ color: '#6b7280' }}>Loading details…</div>
-                    )}
+                    <TopologyDetailsPanel namespace={namespace} nodeId={selected} onClose={() => setSelected(null)} />
                   </div>
                 </div>
               ) : (
@@ -335,7 +331,7 @@ export default function TopologyCanvas({ initialNamespace = 'default' }) {
                 </div>
               </div>
             </div>
-          </div> */}
+          </div>
 
         </div>
       )}

@@ -6,9 +6,7 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.github.istiorouteexplorer.model.NamespaceResources;
 import io.github.istiorouteexplorer.model.ResourceCollection;
 import io.github.istiorouteexplorer.model.istio.*;
-import io.github.istiorouteexplorer.model.kubernetes.EndpointDto;
-import io.github.istiorouteexplorer.model.kubernetes.PodDto;
-import io.github.istiorouteexplorer.model.kubernetes.ServiceDto;
+import io.github.istiorouteexplorer.model.kubernetes.*;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
@@ -56,6 +54,8 @@ public class IstioResourceLoader {
                     listOrEmpty(istioClient.v1beta1().workloadEntries().inNamespace(namespace).list().getItems(), WorkloadEntryDto.class),
                     listOrEmpty(kubernetesClient.services().inNamespace(namespace).list().getItems(), ServiceDto.class),
                     listOrEmpty(kubernetesClient.endpoints().inNamespace(namespace).list().getItems(), EndpointDto.class),
+                    listOrEmpty(kubernetesClient.apps().deployments().inNamespace(namespace).list().getItems(), DeploymentDto.class),
+                    listOrEmpty(kubernetesClient.apps().replicaSets().inNamespace(namespace).list().getItems(), ReplicaSetDto.class),
                     listOrEmpty(kubernetesClient.pods().inNamespace(namespace).list().getItems(), PodDto.class)
             );
         } catch (KubernetesClientException e) {

@@ -1,5 +1,6 @@
 package io.github.istiorouteexplorer.model.istio;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -10,7 +11,8 @@ import java.util.Map;
 
 @Data
 @NoArgsConstructor
-public class HttpMatchRequestDto {
+@AllArgsConstructor
+public class HttpMatchRequestDto implements IstioMatchRequestDto {
 
     private StringMatchDto authority;
     private List<String> gateways = new ArrayList<>();

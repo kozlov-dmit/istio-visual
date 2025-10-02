@@ -1,9 +1,6 @@
 package io.github.istiorouteexplorer.model;
 
-import io.github.istiorouteexplorer.model.istio.HttpMatchRequestDto;
-import io.github.istiorouteexplorer.model.istio.StringMatchDto;
-import io.github.istiorouteexplorer.model.istio.TcpMatchRequestDto;
-import io.github.istiorouteexplorer.model.istio.TlsMatchRequestDto;
+import io.github.istiorouteexplorer.model.istio.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -19,7 +16,16 @@ public class MatchCondition {
     private String field;
     private String kind;
     private String value;
-    
+
+    public static List<MatchCondition> fromMatch(IstioMatchRequestDto matchRequest) {
+        return switch (matchRequest) {
+            case HttpMatchRequestDto httpMatchRequestDto -> fromHttp(httpMatchRequestDto);
+            case TcpMatchRequestDto tcpMatchRequestDto -> fromTcp(tcpMatchRequestDto);
+            case TlsMatchRequestDto tlsMatchRequestDto -> fromTls(tlsMatchRequestDto);
+            default -> throw new IllegalArgumentException("Unsupported match request type: " + matchRequest.getClass().getName());
+        };
+    }
+
     public static List<MatchCondition> fromHttp(HttpMatchRequestDto httpMatchRequest) {
         if (httpMatchRequest == null) {
             return List.of();
@@ -46,14 +52,14 @@ public class MatchCondition {
             return List.of();
         }
         List<MatchCondition> matchConditions = new ArrayList<>();
-        if (tcpMatchRequest.destinationSubnets() != null && !tcpMatchRequest.destinationSubnets().isEmpty()) {
-            tcpMatchRequest.destinationSubnets().forEach(subnet -> matchConditions.add(new MatchCondition("destinationSubnet", "exact", subnet)));
+        if (tcpMatchRequest.getDestinationSubnets() != null && !tcpMatchRequest.getDestinationSubnets().isEmpty()) {
+            tcpMatchRequest.getDestinationSubnets().forEach(subnet -> matchConditions.add(new MatchCondition("destinationSubnet", "exact", subnet)));
         }
-        if (tcpMatchRequest.gateways() != null && !tcpMatchRequest.gateways().isEmpty()) {
-            tcpMatchRequest.gateways().forEach(gateway -> matchConditions.add(new MatchCondition("gateway", "exact", gateway)));
+        if (tcpMatchRequest.getGateways() != null && !tcpMatchRequest.getGateways().isEmpty()) {
+            tcpMatchRequest.getGateways().forEach(gateway -> matchConditions.add(new MatchCondition("gateway", "exact", gateway)));
         }
-        if (tcpMatchRequest.port() != null) {
-            matchConditions.add(new MatchCondition("port", "exact", tcpMatchRequest.port().toString()));
+        if (tcpMatchRequest.getPort() != null) {
+            matchConditions.add(new MatchCondition("port", "exact", tcpMatchRequest.getPort().toString()));
         }
 
         return matchConditions;
@@ -64,17 +70,17 @@ public class MatchCondition {
             return List.of();
         }
         List<MatchCondition> matchConditions = new ArrayList<>();
-        if (tlsMatchRequest.destinationSubnets() != null && !tlsMatchRequest.destinationSubnets().isEmpty()) {
-            tlsMatchRequest.destinationSubnets().forEach(subnet -> matchConditions.add(new MatchCondition("destinationSubnet", "exact", subnet)));
+        if (tlsMatchRequest.getDestinationSubnets() != null && !tlsMatchRequest.getDestinationSubnets().isEmpty()) {
+            tlsMatchRequest.getDestinationSubnets().forEach(subnet -> matchConditions.add(new MatchCondition("destinationSubnet", "exact", subnet)));
         }
-        if (tlsMatchRequest.gateways() != null && !tlsMatchRequest.gateways().isEmpty()) {
-            tlsMatchRequest.gateways().forEach(gateway -> matchConditions.add(new MatchCondition("gateway", "exact", gateway)));
+        if (tlsMatchRequest.getGateways() != null && !tlsMatchRequest.getGateways().isEmpty()) {
+            tlsMatchRequest.getGateways().forEach(gateway -> matchConditions.add(new MatchCondition("gateway", "exact", gateway)));
         }
-        if (tlsMatchRequest.port() != null) {
-            matchConditions.add(new MatchCondition("port", "exact", tlsMatchRequest.port().toString()));
+        if (tlsMatchRequest.getPort() != null) {
+            matchConditions.add(new MatchCondition("port", "exact", tlsMatchRequest.getPort().toString()));
         }
-        if (tlsMatchRequest.sniHosts() != null) {
-            tlsMatchRequest.sniHosts().forEach(sniHost -> matchConditions.add(new MatchCondition("sni", "exact", sniHost)));
+        if (tlsMatchRequest.getSniHosts() != null) {
+            tlsMatchRequest.getSniHosts().forEach(sniHost -> matchConditions.add(new MatchCondition("sni", "exact", sniHost)));
         }
 
         return matchConditions;
@@ -85,8 +91,9 @@ public class MatchCondition {
             return new MatchCondition(field, "exact", stringMatch.getExact());
         } else if (stringMatch.isRegexMatch()) {
             return new MatchCondition(field, "regex", stringMatch.getRegex());
-        } else {
+        } else if (stringMatch.isPrefixMatch()) {
             return new MatchCondition(field, "prefix", stringMatch.getPrefix());
         }
+        return null;
     }
 }
