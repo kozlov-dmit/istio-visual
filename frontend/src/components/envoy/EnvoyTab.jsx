@@ -64,7 +64,7 @@ const EnvoyTab = ({
 
     fetchPods();
     return () => controller.abort();
-  }, [namespace]);
+  }, [namespace, selectedPodName]);
 
   useEffect(() => {
     if (!selectedPodName) {
@@ -103,7 +103,7 @@ const EnvoyTab = ({
 
     fetchConfig();
     return () => controller.abort();
-  }, [namespace]);
+  }, [namespace, selectedPodName]);
 
   const filteredPods = useMemo(() => {
     const needle = podFilter.trim().toLowerCase();
