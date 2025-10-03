@@ -1,5 +1,8 @@
 package io.github.istiorouteexplorer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.fabric8.kubernetes.api.model.ContainerStatus;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.PodList;
@@ -14,7 +17,6 @@ import io.github.istiorouteexplorer.model.envoy.EnvoyPodSummary;
 import io.github.istiorouteexplorer.model.envoy.EnvoyPodSummary.EnvoyContainerStatus;
 import io.github.istiorouteexplorer.model.envoy.EnvoyPodsResponse;
 import lombok.RequiredArgsConstructor;
-import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -45,6 +47,7 @@ public class EnvoyInspectorService {
 
     private final KubernetesClient kubernetesClient;
     private final AppProperties properties;
+    private final ObjectMapper objectMapper;
 
     private record ExecResult(String stdout, String stderr) {
     }
@@ -55,7 +58,6 @@ public class EnvoyInspectorService {
     private static final List<SectionDefinition> SECTION_DEFINITIONS = List.of(
             new SectionDefinition("configDump", "Config Dump", "/config_dump"),
             new SectionDefinition("listeners", "Listeners", "/listeners?format=json"),
-            new SectionDefinition("routes", "Routes", "/routes?format=json"),
             new SectionDefinition("clusters", "Clusters", "/clusters?format=json")
     );
 
@@ -98,12 +100,16 @@ public class EnvoyInspectorService {
 
         List<EnvoyConfigSection> sections = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        String configDumpPayload = null;
 
         for (SectionDefinition definition : SECTION_DEFINITIONS) {
             try {
                 ExecResult execResult = execInIstioProxy(ns, podName, definition.path());
                 String payload = execResult.stdout().trim();
                 String stderr = execResult.stderr().trim();
+                if (definition.id().equals("configDump")) {
+                    configDumpPayload = payload;
+                }
                 if (payload.isEmpty()) {
                     warnings.add("Received empty payload for " + definition.title() + " from pod " + podName);
                 }
@@ -114,6 +120,26 @@ public class EnvoyInspectorService {
             } catch (IOException e) {
                 log.warn("Failed to read {} from envoy in pod {}: {}", definition.title(), podName, e.getMessage());
                 warnings.add("Failed to load " + definition.title() + ": " + e.getMessage());
+            }
+        }
+
+        if (configDumpPayload == null || configDumpPayload.isBlank()) {
+            warnings.add("Config dump payload is empty; unable to extract RoutesConfigDump for pod " + podName);
+        } else {
+            try {
+                Optional<String> routesFromDump = extractRoutesFromConfigDump(configDumpPayload);
+                if (routesFromDump.isPresent()) {
+                    sections.add(new EnvoyConfigSection(
+                            "routesFromConfigDump",
+                            "Routes (config_dump)",
+                            routesFromDump.get(),
+                            ""
+                    ));
+                } else {
+                    warnings.add("RoutesConfigDump section not found inside config_dump for pod " + podName);
+                }
+            } catch (IOException e) {
+                warnings.add("Failed to parse RoutesConfigDump for pod " + podName + ": " + e.getMessage());
             }
         }
 
@@ -238,5 +264,25 @@ public class EnvoyInspectorService {
             return properties.getNamespace();
         }
         return namespace;
+    }
+
+    private Optional<String> extractRoutesFromConfigDump(String payload) throws IOException {
+        JsonNode root = objectMapper.readTree(payload);
+        JsonNode configs = root.path("configs");
+        if (!configs.isArray()) {
+            return Optional.empty();
+        }
+        ArrayNode routes = objectMapper.createArrayNode();
+        for (JsonNode config : configs) {
+            String type = config.path("@type").asText();
+            if ("type.googleapis.com/envoy.admin.v3.RoutesConfigDump".equals(type)
+                    || type.endsWith(".RoutesConfigDump")) {
+                routes.add(config);
+            }
+        }
+        if (routes.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(routes));
     }
 }
