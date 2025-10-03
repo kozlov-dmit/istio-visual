@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import './App.css';
 
 const NODE_TYPE_OPTIONS = ['SERVICE_ENTRY', 'POD', 'DEPLOYMENT', 'MESH', 'UNKNOWN'];
@@ -24,23 +24,51 @@ const toMatchSummary = (matches) => {
   return matches.map(formatMatch).filter(Boolean).join(', ');
 };
 
+const prettyPrintJson = (payload) => {
+  if (!payload) {
+    return '';
+  }
+  try {
+    const parsed = JSON.parse(payload);
+    return JSON.stringify(parsed, null, 2);
+  } catch (err) {
+    return payload;
+  }
+};
+
+const countReadyContainers = (pod) => {
+  const containers = Array.isArray(pod?.containers) ? pod.containers : [];
+  const readyCount = containers.filter((status) => status.ready).length;
+  return { readyCount, total: containers.length };
+};
+
 export default function App() {
+  const [activeTab, setActiveTab] = useState('routes');
   const [namespaceInput, setNamespaceInput] = useState('default');
   const [activeNamespace, setActiveNamespace] = useState('default');
+
   const [routes, setRoutes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [routesLoading, setRoutesLoading] = useState(false);
+  const [routesError, setRoutesError] = useState(null);
   const [nameFilter, setNameFilter] = useState('');
   const [protocolFilter, setProtocolFilter] = useState('ALL');
   const [selectedNodeTypes, setSelectedNodeTypes] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
 
+  const [envoyPods, setEnvoyPods] = useState([]);
+  const [envoyPodsLoading, setEnvoyPodsLoading] = useState(false);
+  const [envoyPodsError, setEnvoyPodsError] = useState(null);
+  const [selectedEnvoyPodName, setSelectedEnvoyPodName] = useState(null);
+  const [envoyConfigLoading, setEnvoyConfigLoading] = useState(false);
+  const [envoyConfigError, setEnvoyConfigError] = useState(null);
+  const [envoyConfig, setEnvoyConfig] = useState(null);
+
   useEffect(() => {
     let cancelled = false;
 
     async function loadRoutes() {
-      setLoading(true);
-      setError(null);
+      setRoutesLoading(true);
+      setRoutesError(null);
       const namespace = activeNamespace.trim();
       const query = namespace.length > 0 ? `?namespace=${encodeURIComponent(namespace)}` : '';
       try {
@@ -55,13 +83,13 @@ export default function App() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.message || 'Failed to load routes');
+          setRoutesError(err.message || 'Не удалось загрузить маршруты');
           setRoutes([]);
           setSelectedNode(null);
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setRoutesLoading(false);
         }
       }
     }
@@ -71,6 +99,87 @@ export default function App() {
       cancelled = true;
     };
   }, [activeNamespace]);
+
+  useEffect(() => {
+    if (activeTab !== 'envoy') {
+      return undefined;
+    }
+    let cancelled = false;
+
+    async function loadEnvoyPods() {
+      setEnvoyPodsLoading(true);
+      setEnvoyPodsError(null);
+      const namespace = activeNamespace.trim();
+      const query = namespace.length > 0 ? `?namespace=${encodeURIComponent(namespace)}` : '';
+      try {
+        const response = await fetch(`/api/envoy/pods${query}`);
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        if (!cancelled) {
+          const pods = Array.isArray(data.pods) ? data.pods : [];
+          setEnvoyPods(pods);
+          setSelectedEnvoyPodName(null);
+          setEnvoyConfig(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setEnvoyPodsError(err.message || 'Не удалось получить список pod с istio-proxy');
+          setEnvoyPods([]);
+          setSelectedEnvoyPodName(null);
+          setEnvoyConfig(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setEnvoyPodsLoading(false);
+        }
+      }
+    }
+
+    loadEnvoyPods();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, activeNamespace]);
+
+  useEffect(() => {
+    if (activeTab !== 'envoy' || !selectedEnvoyPodName) {
+      return undefined;
+    }
+    let cancelled = false;
+
+    async function loadConfig() {
+      setEnvoyConfigLoading(true);
+      setEnvoyConfigError(null);
+      const namespace = activeNamespace.trim();
+      const query = namespace.length > 0 ? `?namespace=${encodeURIComponent(namespace)}` : '';
+      try {
+        const response = await fetch(`/api/envoy/pods/${encodeURIComponent(selectedEnvoyPodName)}${query}`);
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        if (!cancelled) {
+          setEnvoyConfig(data);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setEnvoyConfigError(err.message || 'Не удалось получить конфигурацию Envoy');
+          setEnvoyConfig(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setEnvoyConfigLoading(false);
+        }
+      }
+    }
+
+    loadConfig();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, activeNamespace, selectedEnvoyPodName]);
 
   const normalizedRoutes = useMemo(() => {
     return routes.map((route) => {
@@ -143,8 +252,6 @@ export default function App() {
     setSelectedNode({ route, node, inboundLinks, outboundLinks });
   };
 
-  const nodeTypeIsChecked = (type) => selectedNodeTypes.includes(type);
-
   const renderNodeBadges = (route) => {
     if (!route.nodes.length) {
       return <span className="empty-value">Нет узлов</span>;
@@ -161,225 +268,347 @@ export default function App() {
     ));
   };
 
+  const nodeTypeIsChecked = (type) => selectedNodeTypes.includes(type);
+  const selectedEnvoyPod = envoyConfig?.pod || envoyPods.find((pod) => pod.name === selectedEnvoyPodName) || null;
+  const envoySections = Array.isArray(envoyConfig?.sections) ? envoyConfig.sections : [];
+  const envoyWarnings = Array.isArray(envoyConfig?.warnings) ? envoyConfig.warnings.filter(Boolean) : [];
+
+  const renderNamespaceForm = () => (
+    <form className="namespace-form" onSubmit={handleNamespaceSubmit}>
+      <div className="form-control">
+        <label htmlFor="namespace-input">Namespace</label>
+        <div className="namespace-input-row">
+          <input
+            id="namespace-input"
+            type="text"
+            value={namespaceInput}
+            onChange={(event) => setNamespaceInput(event.target.value)}
+            placeholder="Например: istio-system"
+          />
+          <button type="submit">Загрузить</button>
+        </div>
+        <small className="hint">Оставьте поле пустым, чтобы использовать namespace по умолчанию на сервере.</small>
+      </div>
+    </form>
+  );
+
   return (
     <div className="app-background">
       <header className="app-header">
         <h1>Istio Route Explorer</h1>
         <p>
-          Просмотр маршрутов Istio в выбранном namespace. Используйте фильтры, чтобы найти нужные маршруты, и
-          кликните на узел, чтобы увидеть подробности.
+          Просмотр маршрутов Istio и конфигурации Envoy для sidecar istio-proxy. Выберите namespace,
+          переключайтесь между вкладками и изучайте детали.
         </p>
       </header>
-      <div className="app-shell">
-        <section className="routes-card">
-          <form className="namespace-form" onSubmit={handleNamespaceSubmit}>
-            <div className="form-control">
-              <label htmlFor="namespace-input">Namespace</label>
-              <div className="namespace-input-row">
+
+      <div className="tab-bar">
+        <button
+          type="button"
+          className={`tab-button${activeTab === 'routes' ? ' tab-button--active' : ''}`}
+          onClick={() => setActiveTab('routes')}
+        >
+          Маршруты
+        </button>
+        <button
+          type="button"
+          className={`tab-button${activeTab === 'envoy' ? ' tab-button--active' : ''}`}
+          onClick={() => setActiveTab('envoy')}
+        >
+          Istio-proxy
+        </button>
+      </div>
+
+      {activeTab === 'routes' && (
+        <div className="app-shell">
+          <section className="routes-card">
+            {renderNamespaceForm()}
+
+            <div className="filters">
+              <div className="form-control">
+                <label htmlFor="name-filter">Имя маршрута</label>
                 <input
-                  id="namespace-input"
+                  id="name-filter"
                   type="text"
-                  value={namespaceInput}
-                  onChange={(event) => setNamespaceInput(event.target.value)}
-                  placeholder="Например: istio-system"
+                  value={nameFilter}
+                  onChange={(event) => setNameFilter(event.target.value)}
+                  placeholder="Часть имени"
                 />
-                <button type="submit">Загрузить</button>
               </div>
-              <small className="hint">Оставьте поле пустым, чтобы использовать namespace по умолчанию на сервере.</small>
-            </div>
-          </form>
-
-          <div className="filters">
-            <div className="form-control">
-              <label htmlFor="name-filter">Имя маршрута</label>
-              <input
-                id="name-filter"
-                type="text"
-                value={nameFilter}
-                onChange={(event) => setNameFilter(event.target.value)}
-                placeholder="Часть имени"
-              />
-            </div>
-            <div className="form-control">
-              <label htmlFor="protocol-filter">Протокол</label>
-              <select
-                id="protocol-filter"
-                value={protocolFilter}
-                onChange={(event) => setProtocolFilter(event.target.value)}
-              >
-                {protocolOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <fieldset className="form-control form-control--fieldset">
-              <legend>Типы узлов</legend>
-              <div className="checkbox-grid">
-                {NODE_TYPE_OPTIONS.map((type) => (
-                  <label key={type} className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      checked={nodeTypeIsChecked(type)}
-                      onChange={() => toggleNodeType(type)}
-                    />
-                    <span>{type}</span>
-                  </label>
-                ))}
+              <div className="form-control">
+                <label htmlFor="protocol-filter">Протокол</label>
+                <select
+                  id="protocol-filter"
+                  value={protocolFilter}
+                  onChange={(event) => setProtocolFilter(event.target.value)}
+                >
+                  {protocolOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </fieldset>
-          </div>
+              <fieldset className="form-control form-control--fieldset">
+                <legend>Типы узлов</legend>
+                <div className="checkbox-grid">
+                  {NODE_TYPE_OPTIONS.map((type) => (
+                    <label key={type} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={nodeTypeIsChecked(type)}
+                        onChange={() => toggleNodeType(type)}
+                      />
+                      <span>{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
 
-          <div className="status-bar">
-            {loading && <span className="status status--loading">Загрузка...</span>}
-            {!loading && error && <span className="status status--error">{error}</span>}
-            {!loading && !error && (
-              <span className="status">Найдено маршрутов: {filteredRoutes.length}</span>
-            )}
-          </div>
+            <div className="status-bar">
+              {routesLoading && <span className="status status--loading">Загрузка...</span>}
+              {!routesLoading && routesError && <span className="status status--error">{routesError}</span>}
+              {!routesLoading && !routesError && (
+                <span className="status">Найдено маршрутов: {filteredRoutes.length}</span>
+              )}
+            </div>
 
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Маршрут</th>
-                  <th>Порты</th>
-                  <th>Протоколы</th>
-                  <th>Типы узлов</th>
-                  <th>Узлы</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRoutes.length === 0 && (
+            <div className="table-wrapper">
+              <table>
+                <thead>
                   <tr>
-                    <td colSpan={5} className="empty-value">
-                      {loading ? 'Загрузка...' : 'Маршруты не найдены'}
-                    </td>
+                    <th>Маршрут</th>
+                    <th>Порты</th>
+                    <th>Протоколы</th>
+                    <th>Типы узлов</th>
+                    <th>Узлы</th>
                   </tr>
-                )}
-                {filteredRoutes.map((route, index) => (
-                  <tr key={`${route.destinationHost || 'route'}-${index}`}>
-                    <td>
-                      <div className="route-name">{route.destinationHost || 'Без имени'}</div>
-                    </td>
-                    <td>{formatPortList(route.destinationPorts)}</td>
-                    <td>
-                      {route.protocols.length > 0
-                        ? route.protocols.join(', ')
-                        : <span className="empty-value">N/A</span>}
-                    </td>
-                    <td>
-                      {route.nodeTypes.length > 0
-                        ? route.nodeTypes.join(', ')
-                        : <span className="empty-value">N/A</span>}
-                    </td>
-                    <td className="node-cell">{renderNodeBadges(route)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                </thead>
+                <tbody>
+                  {filteredRoutes.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="empty-value">
+                        {routesLoading ? 'Загрузка...' : 'Маршруты не найдены'}
+                      </td>
+                    </tr>
+                  )}
+                  {filteredRoutes.map((route, index) => (
+                    <tr key={`${route.destinationHost || 'route'}-${index}`}>
+                      <td>
+                        <div className="route-name">{route.destinationHost || 'Без имени'}</div>
+                      </td>
+                      <td>{formatPortList(route.destinationPorts)}</td>
+                      <td>
+                        {route.protocols.length > 0
+                          ? route.protocols.join(', ')
+                          : <span className="empty-value">N/A</span>}
+                      </td>
+                      <td>
+                        {route.nodeTypes.length > 0
+                          ? route.nodeTypes.join(', ')
+                          : <span className="empty-value">N/A</span>}
+                      </td>
+                      <td className="node-cell">{renderNodeBadges(route)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-        <aside className="details-card">
-          <h2>Детали узла</h2>
-          {!selectedNode && <p className="placeholder">Выберите узел в таблице слева.</p>}
-          {selectedNode && (
-            <div className="details">
-              <div className="detail-row">
-                <span className="detail-label">Маршрут</span>
-                <span className="detail-value">{selectedNode.route.destinationHost || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Идентификатор</span>
-                <span className="detail-value">{selectedNode.node.id || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Имя</span>
-                <span className="detail-value">{selectedNode.node.name || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Тип</span>
-                <span className="detail-value">{selectedNode.node.type || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Namespace</span>
-                <span className="detail-value">{selectedNode.node.metadata?.namespace || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Labels</span>
-                <span className="detail-value">
-                  {selectedNode.node.metadata?.labels
-                    ? Object.entries(selectedNode.node.metadata.labels).map(([key, value]) => (
-                        <span key={key} className="badge">{`${key}=${value}`}</span>
-                      ))
-                    : 'N/A'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Annotations</span>
-                <span className="detail-value">
-                  {selectedNode.node.metadata?.annotations
-                    ? Object.entries(selectedNode.node.metadata.annotations).map(([key, value]) => (
-                        <span key={key} className="badge">{`${key}=${value}`}</span>
-                      ))
-                    : 'N/A'}
-                </span>
-              </div>
-              {selectedNode.node.comments && selectedNode.node.comments.length > 0 && (
+          <aside className="details-card">
+            <h2>Детали узла</h2>
+            {!selectedNode && <p className="placeholder">Выберите узел в таблице слева.</p>}
+            {selectedNode && (
+              <div className="details">
                 <div className="detail-row">
-                  <span className="detail-label">Комментарии</span>
-                  <span className="detail-value comment-list">
-                    {selectedNode.node.comments.map((comment, idx) => (
-                      <span key={idx} className="comment-item">{comment}</span>
-                    ))}
+                  <span className="detail-label">Маршрут</span>
+                  <span className="detail-value">{selectedNode.route.destinationHost || 'N/A'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Идентификатор</span>
+                  <span className="detail-value">{selectedNode.node.id || 'N/A'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Имя</span>
+                  <span className="detail-value">{selectedNode.node.name || 'N/A'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Тип</span>
+                  <span className="detail-value">{selectedNode.node.type || 'N/A'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Namespace</span>
+                  <span className="detail-value">{selectedNode.node.metadata?.namespace || 'N/A'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Labels</span>
+                  <span className="detail-value">
+                    {selectedNode.node.metadata?.labels
+                      ? Object.entries(selectedNode.node.metadata.labels).map(([key, value]) => (
+                          <span key={key} className="badge">{`${key}=${value}`}</span>
+                        ))
+                      : 'N/A'}
                   </span>
                 </div>
-              )}
-              {selectedNode.inboundLinks.length > 0 && (
                 <div className="detail-row">
-                  <span className="detail-label">Входящие</span>
-                  <ul className="link-list">
-                    {selectedNode.inboundLinks.map((link, idx) => {
-                      const matchSummary = toMatchSummary(link.matches);
-                      return (
-                        <li key={`in-${link.fromId || 'unknown'}-${idx}`}>
-                          {link.fromId || 'N/A'}
-                          {' -> '}
-                          {selectedNode.node.id || 'N/A'} ({link.protocol || 'N/A'}:{link.port || 'N/A'})
-                          {matchSummary && <span className="link-match"> [{matchSummary}]</span>}
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <span className="detail-label">Annotations</span>
+                  <span className="detail-value">
+                    {selectedNode.node.metadata?.annotations
+                      ? Object.entries(selectedNode.node.metadata.annotations).map(([key, value]) => (
+                          <span key={key} className="badge">{`${key}=${value}`}</span>
+                        ))
+                      : 'N/A'}
+                  </span>
                 </div>
+                {selectedNode.node.comments && selectedNode.node.comments.length > 0 && (
+                  <div className="detail-row">
+                    <span className="detail-label">Комментарии</span>
+                    <span className="detail-value comment-list">
+                      {selectedNode.node.comments.map((comment, idx) => (
+                        <span key={idx} className="comment-item">{comment}</span>
+                      ))}
+                    </span>
+                  </div>
+                )}
+                {selectedNode.inboundLinks.length > 0 && (
+                  <div className="detail-row">
+                    <span className="detail-label">Входящие</span>
+                    <ul className="link-list">
+                      {selectedNode.inboundLinks.map((link, idx) => {
+                        const matchSummary = toMatchSummary(link.matches);
+                        return (
+                          <li key={`in-${link.fromId || 'unknown'}-${idx}`}>
+                            {link.fromId || 'N/A'}
+                            {' -> '}
+                            {selectedNode.node.id || 'N/A'} ({link.protocol || 'N/A'}:{link.port || 'N/A'})
+                            {matchSummary && <span className="link-match"> [{matchSummary}]</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+                {selectedNode.outboundLinks.length > 0 && (
+                  <div className="detail-row">
+                    <span className="detail-label">Исходящие</span>
+                    <ul className="link-list">
+                      {selectedNode.outboundLinks.map((link, idx) => {
+                        const matchSummary = toMatchSummary(link.matches);
+                        return (
+                          <li key={`out-${link.toId || 'unknown'}-${idx}`}>
+                            {selectedNode.node.id || 'N/A'}
+                            {' -> '}
+                            {link.toId || 'N/A'} ({link.protocol || 'N/A'}:{link.port || 'N/A'})
+                            {matchSummary && <span className="link-match"> [{matchSummary}]</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
+                <button type="button" className="clear-button" onClick={() => setSelectedNode(null)}>
+                  Очистить выбор
+                </button>
+              </div>
+            )}
+          </aside>
+        </div>
+      )}
+
+      {activeTab === 'envoy' && (
+        <div className="app-shell">
+          <section className="envoy-card">
+            {renderNamespaceForm()}
+
+            <div className="status-bar">
+              {envoyPodsLoading && <span className="status status--loading">Загрузка pod...</span>}
+              {!envoyPodsLoading && envoyPodsError && <span className="status status--error">{envoyPodsError}</span>}
+              {!envoyPodsLoading && !envoyPodsError && (
+                <span className="status">Найдено pod: {envoyPods.length}</span>
               )}
-              {selectedNode.outboundLinks.length > 0 && (
-                <div className="detail-row">
-                  <span className="detail-label">Исходящие</span>
-                  <ul className="link-list">
-                    {selectedNode.outboundLinks.map((link, idx) => {
-                      const matchSummary = toMatchSummary(link.matches);
-                      return (
-                        <li key={`out-${link.toId || 'unknown'}-${idx}`}>
-                          {selectedNode.node.id || 'N/A'}
-                          {' -> '}
-                          {link.toId || 'N/A'} ({link.protocol || 'N/A'}:{link.port || 'N/A'})
-                          {matchSummary && <span className="link-match"> [{matchSummary}]</span>}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-              <button type="button" className="clear-button" onClick={() => setSelectedNode(null)}>
-                Очистить выбор
-              </button>
             </div>
-          )}
-        </aside>
-      </div>
+
+            <ul className="envoy-pod-list">
+              {envoyPods.length === 0 && !envoyPodsLoading && !envoyPodsError && (
+                <li className="empty-value">Pod с istio-proxy не найдены</li>
+              )}
+              {envoyPods.map((pod) => {
+                const readiness = countReadyContainers(pod);
+                const isActive = selectedEnvoyPodName === pod.name;
+                return (
+                  <li key={pod.name}>
+                    <button
+                      type="button"
+                      className={`envoy-pod-button${isActive ? ' envoy-pod-button--active' : ''}`}
+                      onClick={() => setSelectedEnvoyPodName(pod.name)}
+                    >
+                      <span className="pod-name">{pod.name}</span>
+                      <span className="pod-meta">Статус: {pod.phase || 'UNKNOWN'}</span>
+                      <span className="pod-meta">Готовность: {readiness.readyCount}/{readiness.total}</span>
+                      <span className="pod-meta">Node: {pod.nodeName || '—'}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <aside className="envoy-details-card">
+            <h2>Конфигурация Envoy</h2>
+            {!selectedEnvoyPodName && <p className="placeholder">Выберите pod с istio-proxy слева.</p>}
+            {selectedEnvoyPodName && envoyConfigLoading && (
+              <p className="status status--loading">Загрузка конфигурации...</p>
+            )}
+            {selectedEnvoyPodName && envoyConfigError && (
+              <p className="status status--error">{envoyConfigError}</p>
+            )}
+            {selectedEnvoyPod && envoyConfig && !envoyConfigLoading && !envoyConfigError && (
+              <div className="envoy-details">
+                <div className="detail-row">
+                  <span className="detail-label">Pod</span>
+                  <span className="detail-value">{selectedEnvoyPod.name}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Namespace</span>
+                  <span className="detail-value">{selectedEnvoyPod.namespace}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Node</span>
+                  <span className="detail-value">{selectedEnvoyPod.nodeName || '—'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">IP</span>
+                  <span className="detail-value">{selectedEnvoyPod.podIp || '—'}</span>
+                </div>
+                {envoyWarnings.length > 0 && (
+                  <div className="detail-row">
+                    <span className="detail-label">Предупреждения</span>
+                    <ul className="warning-list">
+                      {envoyWarnings.map((warning, idx) => (
+                        <li key={`warning-${idx}`}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="envoy-sections">
+                  {envoySections.map((section) => (
+                    <div key={section.id} className="envoy-section">
+                      <div className="envoy-section-header">
+                        <h3>{section.title}</h3>
+                        {section.stderr && <span className="section-stderr">stderr: {section.stderr}</span>}
+                      </div>
+                      <pre className="code-block">{prettyPrintJson(section.payload)}</pre>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </aside>
+        </div>
+      )}
     </div>
   );
 }
+
