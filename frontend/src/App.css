@@ -1,4 +1,55 @@
-﻿.tab-bar {
+.filter-input {
+  border: 1px solid #cbd5f5;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.link-chain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #1e3a8a;
+}
+
+.envoy-table-wrapper {
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.envoy-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.envoy-data-table th {
+  text-align: left;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #eef2ff;
+}
+
+.envoy-data-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.envoy-data-table tr:hover td {
+  background: rgba(99, 102, 241, 0.08);
+}
+.tab-bar {
   max-width: 1120px;
   margin: 0 auto 1.25rem;
   display: flex;
