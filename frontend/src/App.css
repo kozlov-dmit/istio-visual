@@ -1,56 +1,40 @@
-.filter-input {
-  border: 1px solid #cbd5f5;
-  border-radius: 10px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.9rem;
+:root {
+  color-scheme: light;
+  font-family: "Inter", "Segoe UI", sans-serif;
 }
 
-.link-chain-list {
-  list-style: none;
-  padding: 0;
+body {
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.85rem;
-  color: #1e3a8a;
+  background: #f3f4f8;
+  color: #1f2933;
 }
 
-.envoy-table-wrapper {
-  overflow: auto;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+.app-background {
+  min-height: 100vh;
+  padding: 2rem 1.5rem 3rem;
+  box-sizing: border-box;
 }
 
-.envoy-data-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 600px;
+.app-header {
+  max-width: 1400px;
+  margin: 0 auto 1.5rem;
 }
 
-.envoy-data-table th {
-  text-align: left;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.app-header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.app-header p {
+  margin: 0;
   color: #475569;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: #eef2ff;
+  font-size: 0.95rem;
 }
 
-.envoy-data-table td {
-  padding: 0.7rem 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  font-size: 0.9rem;
-}
-
-.envoy-data-table tr:hover td {
-  background: rgba(99, 102, 241, 0.08);
-}
 .tab-bar {
-  max-width: 1120px;
+  max-width: 1400px;
   margin: 0 auto 1.25rem;
   display: flex;
   gap: 0.75rem;
@@ -81,6 +65,16 @@
   box-shadow: 0 14px 22px rgba(67, 56, 202, 0.35);
 }
 
+.app-shell {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.routes-card,
+.details-card,
 .envoy-card,
 .envoy-details-card {
   background: #ffffff;
@@ -90,196 +84,29 @@
   box-sizing: border-box;
 }
 
+.routes-card {
+  flex: 1 1 74%;
+}
+
+.details-card {
+  flex: 1 1 26%;
+  position: sticky;
+  top: 1.5rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
 .envoy-card {
-  flex: 1 1 40%;
-  max-height: calc(100vh - 3rem);
+  flex: 1 1 45%;
+  max-height: calc(100vh - 2rem);
   overflow: auto;
 }
 
 .envoy-details-card {
-  flex: 1 1 60%;
+  flex: 1 1 55%;
   position: sticky;
   top: 1.5rem;
-  max-height: calc(100vh - 3rem);
-  overflow: auto;
-}
-
-.envoy-pod-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.envoy-pod-button {
-  width: 100%;
-  text-align: left;
-  border: 1px solid rgba(79, 70, 229, 0.2);
-  background: rgba(99, 102, 241, 0.08);
-  color: #1f2937;
-  border-radius: 12px;
-  padding: 0.75rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.envoy-pod-button:hover {
-  background: rgba(99, 102, 241, 0.18);
-  transform: translateY(-1px);
-}
-
-.envoy-pod-button--active {
-  background: linear-gradient(120deg, #6366f1, #4338ca);
-  color: #ffffff;
-  border-color: transparent;
-}
-
-.pod-name {
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.pod-meta {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.envoy-pod-button:not(.envoy-pod-button--active) .pod-meta {
-  color: #475569;
-}
-
-.envoy-details {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.warning-list {
-  margin: 0;
-  padding-left: 1.1rem;
-  color: #c2410c;
-  font-size: 0.9rem;
-}
-
-.envoy-sections {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.envoy-section {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 1rem;
-  background: #f8fafc;
-}
-
-.envoy-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.envoy-section-header h3 {
-  margin: 0;
-  font-size: 1rem;
-  color: #1f2937;
-}
-
-.section-stderr {
-  font-size: 0.8rem;
-  color: #dc2626;
-}
-
-.code-block {
-  margin: 0;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 0.78rem;
-  line-height: 1.4;
-  background: #0f172a;
-  color: #e2e8f0;
-  padding: 0.75rem;
-  border-radius: 10px;
-  overflow: auto;
-  max-height: 320px;
-}
-
-@media (max-width: 1024px) {
-  .envoy-card,
-  .envoy-details-card {
-    position: static;
-    max-height: none;
-    width: 100%;
-  }
-}
-:root {
-  color-scheme: light;
-  font-family: "Inter", "Segoe UI", sans-serif;
-}
-
-body {
-  margin: 0;
-  background: #f3f4f8;
-  color: #1f2933;
-}
-
-.app-background {
-  min-height: 100vh;
-  padding: 2rem 1.5rem 3rem;
-  box-sizing: border-box;
-}
-
-.app-header {
-  max-width: 1120px;
-  margin: 0 auto 1.5rem;
-}
-
-.app-header h1 {
-  margin: 0 0 0.5rem;
-  font-size: 2rem;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.app-header p {
-  margin: 0;
-  color: #475569;
-  font-size: 0.95rem;
-}
-
-.app-shell {
-  max-width: 1120px;
-  margin: 0 auto;
-  display: flex;
-  gap: 1.5rem;
-  align-items: flex-start;
-}
-
-.routes-card,
-.details-card {
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-  padding: 1.5rem;
-  box-sizing: border-box;
-}
-
-.routes-card {
-  flex: 1 1 68%;
-}
-
-.details-card {
-  flex: 1 1 32%;
-  position: sticky;
-  top: 1.5rem;
-  max-height: calc(100vh - 3rem);
+  max-height: calc(100vh - 2rem);
   overflow: auto;
 }
 
@@ -310,7 +137,8 @@ body {
 }
 
 .form-control input[type="text"]:focus,
-.form-control select:focus {
+.form-control select:focus,
+.filter-input:focus {
   outline: none;
   border-color: #4f46e5;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
@@ -361,10 +189,6 @@ body {
   padding: 0.75rem 1rem;
 }
 
-.form-control--fieldset legend {
-  font-size: 0.85rem;
-}
-
 .checkbox-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -377,11 +201,6 @@ body {
   align-items: center;
   font-size: 0.85rem;
   color: #475569;
-}
-
-.checkbox-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
 }
 
 .status-bar {
@@ -412,7 +231,7 @@ body {
 .table-wrapper table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 720px;
+  min-width: 780px;
 }
 
 .table-wrapper th {
@@ -471,12 +290,24 @@ body {
   border-color: #4338ca;
 }
 
+.link-chain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #1e3a8a;
+}
+
 .empty-value {
   color: #94a3b8;
   font-style: italic;
 }
 
-.details-card h2 {
+.details-card h2,
+.envoy-details-card h2 {
   margin: 0 0 1rem;
   font-size: 1.25rem;
   font-weight: 600;
@@ -489,7 +320,8 @@ body {
   font-style: italic;
 }
 
-.details {
+.details,
+.envoy-details {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -569,19 +401,177 @@ body {
   background: rgba(148, 163, 184, 0.35);
 }
 
+.filter-input {
+  border: 1px solid #cbd5f5;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.envoy-table-wrapper {
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.envoy-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 650px;
+}
+
+.envoy-data-table th {
+  text-align: left;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #475569;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #eef2ff;
+}
+
+.envoy-data-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.9rem;
+}
+
+.envoy-data-table tr:hover td {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.envoy-data-table tr.clickable {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.envoy-data-table tr.clickable.selected td {
+  background: rgba(67, 56, 202, 0.18);
+}
+
+.envoy-detail-panel {
+  margin-top: 1rem;
+  border: 1px solid #cbd5f5;
+  border-radius: 12px;
+  background: #eef2ff;
+  padding: 1rem;
+}
+
+.envoy-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.envoy-detail-header button {
+  border: none;
+  background: #4338ca;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 0.4rem 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.envoy-detail-header button:hover {
+  background: #3730a3;
+}
+
+.envoy-pod-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.envoy-pod-button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  background: rgba(99, 102, 241, 0.08);
+  color: #1f2937;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.envoy-pod-button:hover {
+  background: rgba(99, 102, 241, 0.18);
+  transform: translateY(-1px);
+}
+
+.envoy-pod-button--active {
+  background: linear-gradient(120deg, #6366f1, #4338ca);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.pod-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.pod-meta {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.envoy-pod-button:not(.envoy-pod-button--active) .pod-meta {
+  color: #475569;
+}
+
+.warning-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #c2410c;
+  font-size: 0.9rem;
+}
+
+.code-block {
+  margin: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 0.75rem;
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 360px;
+}
+
+@media (max-width: 1200px) {
+  .table-wrapper table {
+    min-width: 680px;
+  }
+
+  .envoy-data-table {
+    min-width: 600px;
+  }
+}
+
 @media (max-width: 1024px) {
   .app-shell {
     flex-direction: column;
   }
 
-  .details-card {
+  .details-card,
+  .envoy-card,
+  .envoy-details-card {
     position: static;
     max-height: none;
     width: 100%;
-  }
-
-  .table-wrapper table {
-    min-width: 100%;
   }
 }
 
@@ -590,8 +580,11 @@ body {
     flex-direction: column;
   }
 
-  .form-control--fieldset {
+  .form-control--fieldset,
+  .table-wrapper table,
+  .envoy-data-table {
     width: 100%;
+    min-width: 100%;
   }
 
   .namespace-input-row {
@@ -602,5 +595,3 @@ body {
     width: 100%;
   }
 }
-
-

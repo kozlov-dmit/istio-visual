@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { toMatchSummary } from '../../utils/formatters';
 
 const EnvoyDetails = ({
   selectedPodName,
@@ -16,6 +17,40 @@ const EnvoyDetails = ({
   onRoutesFilterChange,
   routesRows,
 }) => {
+  const [selectedListener, setSelectedListener] = useState(null);
+  const [selectedCluster, setSelectedCluster] = useState(null);
+  const [selectedRoute, setSelectedRoute] = useState(null);
+
+  useEffect(() => {
+    if (selectedListener && !listenerRows.some((row) => row.id === selectedListener.id)) {
+      setSelectedListener(null);
+    }
+  }, [listenerRows, selectedListener]);
+
+  useEffect(() => {
+    if (selectedCluster && !clusterRows.some((row) => row.id === selectedCluster.id)) {
+      setSelectedCluster(null);
+    }
+  }, [clusterRows, selectedCluster]);
+
+  useEffect(() => {
+    if (selectedRoute && !routesRows.some((row) => row.id === selectedRoute.id)) {
+      setSelectedRoute(null);
+    }
+  }, [routesRows, selectedRoute]);
+
+  const listenerDetailPayload = useMemo(() => (
+    selectedListener?.raw || selectedListener?.listener || selectedListener
+  ), [selectedListener]);
+
+  const clusterDetailPayload = useMemo(() => (
+    selectedCluster?.raw || selectedCluster?.cluster || selectedCluster
+  ), [selectedCluster]);
+
+  const routeDetailPayload = useMemo(() => (
+    selectedRoute?.raw || selectedRoute
+  ), [selectedRoute]);
+
   if (!selectedPodName) {
     return (
       <aside className="envoy-details-card">
@@ -100,6 +135,7 @@ const EnvoyDetails = ({
                 <tr>
                   <th>Name</th>
                   <th>Origin</th>
+                  <th>State</th>
                   <th>Address</th>
                   <th>Port</th>
                   <th>Filters</th>
@@ -108,13 +144,18 @@ const EnvoyDetails = ({
               <tbody>
                 {listenerRows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="empty-value">No listeners match current filter</td>
+                    <td colSpan={6} className="empty-value">No listeners match current filter</td>
                   </tr>
                 )}
                 {listenerRows.map((row) => (
-                  <tr key={row.id}>
+                  <tr
+                    key={row.id}
+                    className={`clickable${selectedListener?.id === row.id ? ' selected' : ''}`}
+                    onClick={() => setSelectedListener(row)}
+                  >
                     <td>{row.name}</td>
                     <td>{row.origin}</td>
+                    <td>{row.state || '—'}</td>
                     <td>{row.address}</td>
                     <td>{row.port}</td>
                     <td>{row.filters?.length ? row.filters.join(', ') : '—'}</td>
@@ -123,6 +164,15 @@ const EnvoyDetails = ({
               </tbody>
             </table>
           </div>
+          {selectedListener && (
+            <div className="envoy-detail-panel">
+              <div className="envoy-detail-header">
+                <h4>Listener details: {selectedListener.name}</h4>
+                <button type="button" onClick={() => setSelectedListener(null)}>Close</button>
+              </div>
+              <pre className="code-block">{JSON.stringify(listenerDetailPayload, null, 2)}</pre>
+            </div>
+          )}
         </div>
 
         <div className="envoy-section">
@@ -142,6 +192,7 @@ const EnvoyDetails = ({
                 <tr>
                   <th>Name</th>
                   <th>Origin</th>
+                  <th>State</th>
                   <th>Type</th>
                   <th>Endpoints</th>
                   <th>Added via API</th>
@@ -150,14 +201,19 @@ const EnvoyDetails = ({
               <tbody>
                 {clusterRows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="empty-value">No clusters match current filter</td>
+                    <td colSpan={6} className="empty-value">No clusters match current filter</td>
                   </tr>
                 )}
                 {clusterRows.map((row) => (
-                  <tr key={row.id}>
+                  <tr
+                    key={row.id}
+                    className={`clickable${selectedCluster?.id === row.id ? ' selected' : ''}`}
+                    onClick={() => setSelectedCluster(row)}
+                  >
                     <td>{row.name}</td>
                     <td>{row.origin}</td>
-                    <td>{row.type}</td>
+                    <td>{row.state || '—'}</td>
+                    <td>{row.type || '—'}</td>
                     <td>{row.endpointCount ?? '—'}</td>
                     <td>{row.addedViaApi === undefined ? '—' : (row.addedViaApi ? 'Yes' : 'No')}</td>
                   </tr>
@@ -165,6 +221,15 @@ const EnvoyDetails = ({
               </tbody>
             </table>
           </div>
+          {selectedCluster && (
+            <div className="envoy-detail-panel">
+              <div className="envoy-detail-header">
+                <h4>Cluster details: {selectedCluster.name}</h4>
+                <button type="button" onClick={() => setSelectedCluster(null)}>Close</button>
+              </div>
+              <pre className="code-block">{JSON.stringify(clusterDetailPayload, null, 2)}</pre>
+            </div>
+          )}
         </div>
 
         <div className="envoy-section">
@@ -196,7 +261,11 @@ const EnvoyDetails = ({
                   </tr>
                 )}
                 {routesRows.map((row) => (
-                  <tr key={row.id}>
+                  <tr
+                    key={row.id}
+                    className={`clickable${selectedRoute?.id === row.id ? ' selected' : ''}`}
+                    onClick={() => setSelectedRoute(row)}
+                  >
                     <td>{row.name}</td>
                     <td>{row.origin}</td>
                     <td>{row.virtualHostCount}</td>
@@ -211,6 +280,15 @@ const EnvoyDetails = ({
               </tbody>
             </table>
           </div>
+          {selectedRoute && (
+            <div className="envoy-detail-panel">
+              <div className="envoy-detail-header">
+                <h4>Route details: {selectedRoute.name}</h4>
+                <button type="button" onClick={() => setSelectedRoute(null)}>Close</button>
+              </div>
+              <pre className="code-block">{JSON.stringify(routeDetailPayload, null, 2)}</pre>
+            </div>
+          )}
         </div>
       </div>
     </aside>
