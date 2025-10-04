@@ -1,0 +1,137 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: egress-gw
+spec:
+  selector:
+    app: istio-egressgateway-fort
+  servers:
+    - hosts:
+        - '*'
+      port:
+        name: kafka-19093
+        number: 19093
+        protocol: kafka
+      tls:
+        minProtocolVersion: TLSV1_2
+        mode: ISTIO_MUTUAL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: egress-kafka-svc
+spec:
+  ports:
+    - name: kafka-19093
+      protocol: TCP
+      port: 19093
+      targetPort: 19093
+  selector:
+    app: istio-egressgateway-fort
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: dr-egress-svc
+spec:
+  exportTo:
+    - '.'
+  host: istio-egressgateway-fort.fort-istio.svc.cluster.local
+  trafficPolicy:
+    portLevelSettings:
+      - port:
+          number: 19093
+        tls:
+          mode: ISTIO_MUTUAL
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: kafka-cluster-se
+spec:
+  exportTo:
+    - '.'
+  hosts:
+    - kafka1.cluster.org
+  ports:
+    - number: 9093
+      name: kafka-9093
+      protocol: kafka
+  endpoints:
+    - address: kafka1.cluster.org
+      ports:
+        kafka-9093: 9093
+    - address: kafka2.cluster.org
+      ports:
+        kafka-9093: 9093
+    - address: kafka3.cluster.org
+      ports:
+        kafka-9093: 9093
+  location: MESH_EXTERNAL
+  resolution: DNS
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: dr-kafka
+spec:
+  exportTo:
+    - '.'
+  host: kafka1.cluster.org
+  trafficPolicy:
+    portLevelSettings:
+      - port:
+          number: 9093
+        tls:
+          mode: MUTUAL
+          insecureSkipVerify: true
+          clientCertificate: /secret/istio/istio-egressgateway-certs/tls.crt
+          privateKey: /secret/istio/istio-egressgateway-certs/tls.key
+  workloadSelector:
+    matchLabels:
+      app: istio-egressgateway-fort
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: egress-vs
+spec:
+  exportTo:
+    - '.'
+  gateways:
+    - egress-gw
+  hosts:
+    - istio-egressgateway-fort.fort-istio.svc.cluster.local
+  tcp:
+    - match:
+        - gateways:
+            - egress-gw
+          port: 19093
+      route:
+        - destination:
+            host: kafka1.cluster.org
+            port:
+              number: 9093
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: mesh-to-egress-kafka-vs
+spec:
+  gateways:
+    - mesh
+  hosts:
+    - kafka1.cluster.org
+  tcp:
+    - match:
+        - gateways:
+            - mesh
+          port: 9093
+      route:
+        - destination:
+            host: egress-kafka-svc
+            port:
+              number: 19093
+          weight: 100
