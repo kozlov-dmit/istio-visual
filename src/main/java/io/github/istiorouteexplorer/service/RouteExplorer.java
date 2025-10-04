@@ -166,15 +166,22 @@ public class RouteExplorer {
                         // for all source nodes create route
                         sourceIds.forEach(id ->
                                 destinationNodes.forEach(destNode ->
-                                        route.addLink(id, destNode, "HTTP", r.getPort(), matchConditions)
+                                        route.addLink(id, destNode, protocol(routeDto), r.getPort(), matchConditions)
                                 )
                         );
                     }
                 });
             });
         });
+    }
 
-
+    private String protocol(IstioRoute route) {
+        return switch (route) {
+            case HttpRouteDto ignored -> "HTTP";
+            case TcpRouteDto ignored -> "TCP";
+            case TlsRouteDto ignored -> "TLS";
+            default -> "UNKNOWN";
+        };
     }
 
     private List<RouteNode> findNodeLinkedToGateway(GatewayDto gateway) {
@@ -295,7 +302,7 @@ public class RouteExplorer {
         }
         // try match without <namespace>.svc.cluster.local
         if (host.endsWith("." + resources.primary().getNamespace() + CLUSTER_POSTFIX)) {
-            return host.substring(0, ("." + resources.primary().getNamespace() + CLUSTER_POSTFIX).length()).equalsIgnoreCase(targetName);
+            return host.replace("." + resources.primary().getNamespace() + CLUSTER_POSTFIX, "").equalsIgnoreCase(targetName);
         } else {
             return false;
         }

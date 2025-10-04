@@ -21,6 +21,7 @@
         <resources.encoding>UTF-8</resources.encoding>
         <java.version>21</java.version>
         <fabric8.client.version>7.3.1</fabric8.client.version>
+        <control.plane.version>1.0.49</control.plane.version>
     </properties>
 
     <build>
@@ -130,6 +131,16 @@
             <version>${fabric8.client.version}</version>
         </dependency>
         <dependency>
+            <groupId>io.envoyproxy.controlplane</groupId>
+            <artifactId>api</artifactId>
+            <version>${control.plane.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>4.31.0</version>
+        </dependency>
+        <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
         </dependency>
@@ -144,11 +155,6 @@
             <version>3.2.1</version>
         </dependency>
         <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper-module-record</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -156,7 +162,7 @@
         <dependency>
             <groupId>com.microsoft.playwright</groupId>
             <artifactId>playwright</artifactId>
-            <version>1.47.0</version>
+            <version>1.50.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
