@@ -260,7 +260,7 @@ public class EnvoyInspectorService {
 
         for (JsonNode config : configs) {
             String typeUrl = config.path("@type").asText();
-            if (typeUrl.contains("RoutesConfigDump")) {
+            if (typeUrl.contains(".RoutesConfigDump")) {
                 return Optional.of(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(config));
             }
         }
