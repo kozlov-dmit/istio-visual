@@ -17,7 +17,6 @@ import io.github.istiorouteexplorer.model.envoy.EnvoyPodSummary;
 import io.github.istiorouteexplorer.model.envoy.EnvoyPodSummary.EnvoyContainerStatus;
 import io.github.istiorouteexplorer.model.envoy.EnvoyPodsResponse;
 import lombok.RequiredArgsConstructor;
-import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -52,14 +51,6 @@ public class EnvoyInspectorService {
 
     private record ExecResult(String stdout, String stderr) {
     }
-
-    private record SectionDefinition(String id, String title, String path) {
-    }
-
-    private static final List<SectionDefinition> SECTION_DEFINITIONS = List.of(
-            new SectionDefinition("configDump", "Config Dump", "/config_dump"),
-            new SectionDefinition("clusters", "Clusters", "/clusters?format=json")
-    );
 
     public EnvoyPodsResponse listEnvoyPods(String namespace) throws IOException {
         String ns = resolveNamespace(namespace);
@@ -102,25 +93,21 @@ public class EnvoyInspectorService {
         List<String> warnings = new ArrayList<>();
         String configDumpPayload = null;
 
-        for (SectionDefinition definition : SECTION_DEFINITIONS) {
-            try {
-                ExecResult execResult = execInIstioProxy(ns, podName, definition.path());
-                String payload = execResult.stdout().trim();
-                String stderr = execResult.stderr().trim();
-                if (definition.id().equals("configDump")) {
-                    configDumpPayload = payload;
-                }
-                if (payload.isEmpty()) {
-                    warnings.add("Received empty payload for " + definition.title() + " from pod " + podName);
-                }
-                if (!stderr.isEmpty()) {
-                    warnings.add("stderr for " + definition.title() + ": " + stderr);
-                }
-                sections.add(new EnvoyConfigSection(definition.id(), definition.title(), payload, stderr));
-            } catch (IOException e) {
-                log.warn("Failed to read {} from envoy in pod {}: {}", definition.title(), podName, e.getMessage());
-                warnings.add("Failed to load " + definition.title() + ": " + e.getMessage());
+        try {
+            ExecResult execResult = execInIstioProxy(ns, podName, "/config_dump");
+            String payload = execResult.stdout().trim();
+            String stderr = execResult.stderr().trim();
+            configDumpPayload = payload;
+            if (payload.isEmpty()) {
+                warnings.add("Received empty payload for Config Dump from pod " + podName);
             }
+            if (!stderr.isEmpty()) {
+                warnings.add("stderr for Config Dump: " + stderr);
+            }
+            sections.add(new EnvoyConfigSection("configDump", "Config Dump", payload, stderr));
+        } catch (IOException e) {
+            log.warn("Failed to read Config Dump from envoy in pod {}: {}", podName, e.getMessage());
+            warnings.add("Failed to load Config Dump: " + e.getMessage());
         }
 
         if (configDumpPayload == null || configDumpPayload.isBlank()) {
@@ -133,13 +120,27 @@ public class EnvoyInspectorService {
                             "listenersFromConfigDump",
                             "Listeners (config_dump)",
                             listenersFromDump.get(),
-                            ""
-                    ));
+                            ""));
                 } else {
                     warnings.add("ListenersConfigDump section not found inside config_dump for pod " + podName);
                 }
             } catch (IOException e) {
                 warnings.add("Failed to parse ListenersConfigDump for pod " + podName + ": " + e.getMessage());
+            }
+
+            try {
+                Optional<String> clustersFromDump = extractClustersFromConfigDump(configDumpPayload);
+                if (clustersFromDump.isPresent()) {
+                    sections.add(new EnvoyConfigSection(
+                            "clustersFromConfigDump",
+                            "Clusters (config_dump)",
+                            clustersFromDump.get(),
+                            ""));
+                } else {
+                    warnings.add("ClustersConfigDump section not found inside config_dump for pod " + podName);
+                }
+            } catch (IOException e) {
+                warnings.add("Failed to parse ClustersConfigDump for pod " + podName + ": " + e.getMessage());
             }
 
             try {
@@ -149,8 +150,7 @@ public class EnvoyInspectorService {
                             "routesFromConfigDump",
                             "Routes (config_dump)",
                             routesFromDump.get(),
-                            ""
-                    ));
+                            ""));
                 } else {
                     warnings.add("RoutesConfigDump section not found inside config_dump for pod " + podName);
                 }
@@ -164,7 +164,7 @@ public class EnvoyInspectorService {
 
     private ExecResult execInIstioProxy(String namespace, String podName, String path) throws IOException {
         String url = "http://127.0.0.1:15000" + path;
-        String[] command = {"curl", "-sS", "-f", "-H", "Accept: application/json", url};
+        String[] command = { "curl", "-sS", "-f", "-H", "Accept: application/json", url };
         ByteArrayOutputStream stdout = new ByteArrayOutputStream();
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
         CountDownLatch latch = new CountDownLatch(1);
@@ -227,6 +227,26 @@ public class EnvoyInspectorService {
         return Optional.empty();
     }
 
+    private Optional<String> extractClustersFromConfigDump(String payload) throws IOException {
+        JsonNode root = objectMapper.readTree(payload);
+        ArrayNode configs;
+        if (root.isArray()) {
+            configs = (ArrayNode) root;
+        } else if (root.path("configs").isArray()) {
+            configs = (ArrayNode) root.path("configs");
+        } else {
+            return Optional.empty();
+        }
+
+        for (JsonNode config : configs) {
+            String typeUrl = config.path("@type").asText();
+            if (typeUrl.contains("ClustersConfigDump")) {
+                return Optional.of(objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(config));
+            }
+        }
+        return Optional.empty();
+    }
+
     private Optional<String> extractRoutesFromConfigDump(String payload) throws IOException {
         JsonNode root = objectMapper.readTree(payload);
         ArrayNode configs;
@@ -262,7 +282,8 @@ public class EnvoyInspectorService {
         String podIp = Optional.ofNullable(pod.getStatus()).map(status -> status.getPodIP()).orElse(null);
         String hostIp = Optional.ofNullable(pod.getStatus()).map(status -> status.getHostIP()).orElse(null);
         String nodeName = Optional.ofNullable(pod.getSpec()).map(spec -> spec.getNodeName()).orElse(null);
-        String serviceAccount = Optional.ofNullable(pod.getSpec()).map(spec -> spec.getServiceAccountName()).orElse(null);
+        String serviceAccount = Optional.ofNullable(pod.getSpec()).map(spec -> spec.getServiceAccountName())
+                .orElse(null);
 
         String creationTimestampRaw = Optional.ofNullable(pod.getMetadata())
                 .map(meta -> meta.getCreationTimestamp())
@@ -299,8 +320,7 @@ public class EnvoyInspectorService {
                 creationTimestamp,
                 labels,
                 annotations,
-                containerStatuses
-        );
+                containerStatuses);
     }
 
     private EnvoyContainerStatus toContainerStatus(ContainerStatus status) {
@@ -311,8 +331,7 @@ public class EnvoyInspectorService {
                 status.getName(),
                 Boolean.TRUE.equals(status.getReady()),
                 status.getRestartCount(),
-                status.getImage()
-        );
+                status.getImage());
     }
 
     private String resolveNamespace(String namespace) {

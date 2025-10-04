@@ -118,7 +118,7 @@ const EnvoyTab = ({
   ), [config]);
 
   const clusterRows = useMemo(() => (
-    config ? aggregateClusters(config.sections?.find((section) => section.id === 'clusters')?.payload) : []
+    config ? aggregateClusters(config.sections?.find((section) => section.id === 'clustersFromConfigDump')?.payload) : []
   ), [config]);
 
   const routesRows = useMemo(() => (
