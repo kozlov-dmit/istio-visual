@@ -114,7 +114,7 @@ const EnvoyTab = ({
   }, [pods, podFilter]);
 
   const listenerRows = useMemo(() => (
-    config ? aggregateListeners(config.sections?.find((section) => section.id === 'listeners')?.payload) : []
+    config ? aggregateListeners(config.sections?.find((section) => section.id === 'listenersFromConfigDump')?.payload) : []
   ), [config]);
 
   const clusterRows = useMemo(() => (
