@@ -6,7 +6,6 @@ import {
   aggregateClusters,
   aggregateListeners,
   aggregateRoutesFromDump,
-  aggregateEnvoyStats,
 } from '../../utils/envoyAggregators';
 
 const EnvoyTab = ({
@@ -14,6 +13,7 @@ const EnvoyTab = ({
   namespaceInput,
   onNamespaceInputChange,
   onNamespaceSubmit,
+  refreshToken,
 }) => {
   const [pods, setPods] = useState([]);
   const [podsLoading, setPodsLoading] = useState(false);
@@ -28,7 +28,6 @@ const EnvoyTab = ({
   const [listenerFilter, setListenerFilter] = useState('');
   const [clusterFilter, setClusterFilter] = useState('');
   const [routesFilter, setRoutesFilter] = useState('');
-  const [statsFilter, setStatsFilter] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -66,7 +65,7 @@ const EnvoyTab = ({
 
     fetchPods();
     return () => controller.abort();
-  }, [namespace, selectedPodName]);
+  }, [namespace, refreshToken]);
 
   useEffect(() => {
     if (!selectedPodName) {
@@ -105,7 +104,7 @@ const EnvoyTab = ({
 
     fetchConfig();
     return () => controller.abort();
-  }, [namespace, selectedPodName]);
+  }, [namespace, selectedPodName, refreshToken]);
 
   const filteredPods = useMemo(() => {
     const needle = podFilter.trim().toLowerCase();
@@ -126,27 +125,6 @@ const EnvoyTab = ({
   const routesRows = useMemo(() => (
     config ? aggregateRoutesFromDump(config.sections?.find((section) => section.id === 'routesFromConfigDump')?.payload) : []
   ), [config]);
-
-  const statsSections = useMemo(() => (
-    config ? aggregateEnvoyStats(config.sections?.find((section) => section.id === 'stats')?.payload) : []
-  ), [config]);
-
-  const filteredStatsSections = useMemo(() => {
-    const needle = statsFilter.trim().toLowerCase();
-    if (!needle) {
-      return statsSections;
-    }
-    return statsSections
-      .map((section) => ({
-        ...section,
-        metrics: section.metrics.filter((metric) => (
-          [metric.name, metric.metric, metric.scope, metric.type]
-            .filter(Boolean)
-            .some((value) => value.toString().toLowerCase().includes(needle))
-        )),
-      }))
-      .filter((section) => section.metrics.length > 0);
-  }, [statsSections, statsFilter]);
 
   const filteredListenerRows = useMemo(() => {
     const needle = listenerFilter.trim().toLowerCase();
@@ -209,7 +187,7 @@ const EnvoyTab = ({
         </div>
 
         <div className="status-bar">
-          {podsLoading && <span className="status status--loading">Loading pods…</span>}
+          {podsLoading && <span className="status status--loading">Loading pods...</span>}
           {!podsLoading && podsError && <span className="status status--error">{podsError}</span>}
           {!podsLoading && !podsError && (
             <span className="status">Pods found: {filteredPods.length}</span>
@@ -238,10 +216,6 @@ const EnvoyTab = ({
         routesFilter={routesFilter}
         onRoutesFilterChange={setRoutesFilter}
         routesRows={filteredRoutesRows}
-        statsFilter={statsFilter}
-        onStatsFilterChange={setStatsFilter}
-        statsSections={filteredStatsSections}
-        hasStats={statsSections.length > 0}
       />
     </div>
   );

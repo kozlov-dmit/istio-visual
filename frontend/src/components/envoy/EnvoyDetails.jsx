@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { toMatchSummary } from '../../utils/formatters';
 
 const EnvoyDetails = ({
   selectedPodName,
@@ -7,10 +6,6 @@ const EnvoyDetails = ({
   warnings,
   isLoading,
   error,
-  statsFilter,
-  onStatsFilterChange,
-  statsSections,
-  hasStats,
   listenerFilter,
   onListenerFilterChange,
   listenerRows,
@@ -55,27 +50,12 @@ const EnvoyDetails = ({
     selectedRoute?.raw || selectedRoute
   ), [selectedRoute]);
 
-  const metricsSectionsList = Array.isArray(statsSections) ? statsSections : [];
-  const metricsEmpty = metricsSectionsList.length === 0;
-  const metricsPlaceholder = !hasStats
-    ? 'No runtime metrics were returned by Envoy.'
-    : 'No metrics match current filter.';
-  const formatMetricValue = (value) => {
-    if (typeof value === 'number') {
-      return value.toLocaleString();
-    }
-    if (value === null || value === undefined || value === '') {
-      return 'n/a';
-    }
-    return value;
-  };
-
-
-
   if (!selectedPodName) {
     return (
       <aside className="envoy-details-card">
-        <h2>Envoy configuration</h2>
+        <div className="envoy-details-header">
+          <h2>Envoy configuration</h2>
+        </div>
         <p className="placeholder">Select an istio-proxy pod to inspect configuration.</p>
       </aside>
     );
@@ -84,8 +64,10 @@ const EnvoyDetails = ({
   if (isLoading) {
     return (
       <aside className="envoy-details-card">
-        <h2>Envoy configuration</h2>
-        <p className="status status--loading">Loading configuration…</p>
+        <div className="envoy-details-header">
+          <h2>Envoy configuration</h2>
+        </div>
+        <p className="status status--loading">Loading configuration...</p>
       </aside>
     );
   }
@@ -93,7 +75,9 @@ const EnvoyDetails = ({
   if (error) {
     return (
       <aside className="envoy-details-card">
-        <h2>Envoy configuration</h2>
+        <div className="envoy-details-header">
+          <h2>Envoy configuration</h2>
+        </div>
         <p className="status status--error">{error}</p>
       </aside>
     );
@@ -102,7 +86,9 @@ const EnvoyDetails = ({
   if (!podSummary) {
     return (
       <aside className="envoy-details-card">
-        <h2>Envoy configuration</h2>
+        <div className="envoy-details-header">
+          <h2>Envoy configuration</h2>
+        </div>
         <p className="placeholder">No configuration data available.</p>
       </aside>
     );
@@ -110,7 +96,9 @@ const EnvoyDetails = ({
 
   return (
     <aside className="envoy-details-card">
-      <h2>Envoy configuration</h2>
+      <div className="envoy-details-header">
+        <h2>Envoy configuration</h2>
+      </div>
       <div className="envoy-details">
         <div className="detail-row">
           <span className="detail-label">Pod</span>
@@ -118,15 +106,15 @@ const EnvoyDetails = ({
         </div>
         <div className="detail-row">
           <span className="detail-label">Namespace</span>
-          <span className="detail-value">{podSummary.namespace || '—'}</span>
+          <span className="detail-value">{podSummary.namespace || '-'}</span>
         </div>
         <div className="detail-row">
           <span className="detail-label">Node</span>
-          <span className="detail-value">{podSummary.nodeName || '—'}</span>
+          <span className="detail-value">{podSummary.nodeName || '-'}</span>
         </div>
         <div className="detail-row">
           <span className="detail-label">Pod IP</span>
-          <span className="detail-value">{podSummary.podIp || '—'}</span>
+          <span className="detail-value">{podSummary.podIp || '-'}</span>
         </div>
         {Array.isArray(warnings) && warnings.length > 0 && (
           <div className="detail-row">
@@ -139,56 +127,6 @@ const EnvoyDetails = ({
           </div>
         )}
 
-        <div className="envoy-section">
-          <div className="envoy-section-header">
-            <h3>Metrics</h3>
-            <input
-              className="filter-input"
-              type="text"
-              value={statsFilter}
-              onChange={(event) => onStatsFilterChange(event.target.value)}
-              placeholder="Filter metrics"
-            />
-          </div>
-          {metricsEmpty ? (
-            <p className="empty-value">{metricsPlaceholder}</p>
-          ) : (
-            <div className="envoy-metrics-collection">
-              {metricsSectionsList.map((category) => (
-                <div key={category.id} className="envoy-metrics-group">
-                  <h4>{category.title}</h4>
-                  <div className="envoy-table-wrapper">
-                    <table className="envoy-data-table envoy-metrics-table">
-                      <thead>
-                        <tr>
-                          <th>Metric</th>
-                          <th>Value</th>
-                          <th>Type</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {category.metrics.map((metric) => (
-                          <tr key={metric.name}>
-                            <td>
-                              <div className="envoy-metric-name" title={metric.name}>
-                                {metric.metric || metric.name}
-                              </div>
-                              {metric.scope ? (
-                                <div className="envoy-metric-scope">{metric.scope}</div>
-                              ) : null}
-                            </td>
-                            <td className="envoy-metric-value">{formatMetricValue(metric.value)}</td>
-                            <td>{metric.type || 'UNKNOWN'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
         <div className="envoy-section">
           <div className="envoy-section-header">
             <h3>Listeners</h3>
@@ -226,10 +164,10 @@ const EnvoyDetails = ({
                   >
                     <td>{row.name}</td>
                     <td>{row.origin}</td>
-                    <td>{row.state || '—'}</td>
-                    <td>{row.address}</td>
-                    <td>{row.port}</td>
-                    <td>{row.filters?.length ? row.filters.join(', ') : '—'}</td>
+                    <td>{row.state || '-'}</td>
+                    <td>{row.address || '-'}</td>
+                    <td>{row.port ?? '-'}</td>
+                    <td>{row.filters?.length ? row.filters.join(', ') : '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -283,10 +221,10 @@ const EnvoyDetails = ({
                   >
                     <td>{row.name}</td>
                     <td>{row.origin}</td>
-                    <td>{row.state || '—'}</td>
-                    <td>{row.type || '—'}</td>
-                    <td>{row.endpointCount ?? '—'}</td>
-                    <td>{row.addedViaApi === undefined ? '—' : (row.addedViaApi ? 'Yes' : 'No')}</td>
+                    <td>{row.state || '-'}</td>
+                    <td>{row.type || '-'}</td>
+                    <td>{row.endpointCount ?? '-'}</td>
+                    <td>{row.addedViaApi === undefined ? '-' : (row.addedViaApi ? 'Yes' : 'No')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -343,8 +281,8 @@ const EnvoyDetails = ({
                     <td>{row.routeCount}</td>
                     <td>
                       {row.sampleDomains.length > 0
-                        ? `${row.sampleDomains.join(', ')}${row.totalDomains > row.sampleDomains.length ? '…' : ''}`
-                        : '—'}
+                        ? `${row.sampleDomains.join(', ')}${row.totalDomains > row.sampleDomains.length ? '...' : ''}`
+                        : '-'}
                     </td>
                   </tr>
                 ))}

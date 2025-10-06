@@ -7,12 +7,7 @@ import { buildLinkLabel } from '../../utils/formatters';
 
 const NODE_TYPE_OPTIONS = ['SERVICE_ENTRY', 'POD', 'DEPLOYMENT', 'MESH', 'UNKNOWN'];
 
-const RoutesTab = ({
-  namespace,
-  namespaceInput,
-  onNamespaceInputChange,
-  onNamespaceSubmit,
-}) => {
+const RoutesTab = ({\n  namespace,\n  namespaceInput,\n  onNamespaceInputChange,\n  onNamespaceSubmit,\n  refreshToken,\n}) => {
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -51,7 +46,7 @@ const RoutesTab = ({
 
     fetchRoutes();
     return () => controller.abort();
-  }, [namespace]);
+  }, [namespace, refreshToken]);
 
   const normalizedRoutes = useMemo(() => (
     routes.map((route) => {
@@ -134,7 +129,7 @@ const RoutesTab = ({
         />
 
         <div className="status-bar">
-          {loading && <span className="status status--loading">Loading…</span>}
+          {loading && <span className="status status--loading">Loading routes...</span>}
           {!loading && error && <span className="status status--error">{error}</span>}
           {!loading && !error && (
             <span className="status">Routes found: {filteredRoutes.length}</span>
@@ -159,3 +154,4 @@ const RoutesTab = ({
 };
 
 export default RoutesTab;
+

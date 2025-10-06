@@ -8,6 +8,7 @@ const PodRoutesTab = ({
   namespaceInput,
   onNamespaceInputChange,
   onNamespaceSubmit,
+  refreshToken,
 }) => {
   const [pods, setPods] = useState([]);
   const [podsLoading, setPodsLoading] = useState(false);
@@ -59,7 +60,7 @@ const PodRoutesTab = ({
 
     fetchPods();
     return () => controller.abort();
-  }, [namespace, selectedPodName]);
+  }, [namespace, selectedPodName, refreshToken]);
 
   useEffect(() => {
     if (!selectedPodName) {
@@ -98,7 +99,7 @@ const PodRoutesTab = ({
 
     fetchConfig();
     return () => controller.abort();
-  }, [namespace, selectedPodName]);
+  }, [namespace, selectedPodName, refreshToken]);
 
   const filteredPods = useMemo(() => {
     const needle = podFilter.trim().toLowerCase();
@@ -181,7 +182,7 @@ const PodRoutesTab = ({
         </div>
 
         <div className="status-bar">
-          {podsLoading && <span className="status status--loading">Loading pods…</span>}
+          {podsLoading && <span className="status status--loading">Loading pods...</span>}
           {!podsLoading && podsError && <span className="status status--error">{podsError}</span>}
           {!podsLoading && !podsError && (
             <span className="status">Pods found: {filteredPods.length}</span>
@@ -198,7 +199,7 @@ const PodRoutesTab = ({
       <section className="pod-routes-details">
         <h2>Pod routes</h2>
         {!selectedPodName && <p className="placeholder">Select a pod to inspect Envoy routes.</p>}
-        {selectedPodName && configLoading && <p className="status status--loading">Loading configuration…</p>}
+        {selectedPodName && configLoading && <p className="status status--loading">Loading configuration...</p>}
         {selectedPodName && configError && <p className="status status--error">{configError}</p>}
 
         {selectedPodName && !configLoading && !configError && (
@@ -286,3 +287,4 @@ const PodRoutesTab = ({
 };
 
 export default PodRoutesTab;
+

@@ -45,7 +45,7 @@ const RoutesTable = ({ routes, isLoading, onNodeSelect, selectedNode }) => {
         <table>
           <tbody>
             <tr>
-              <td className="empty-value">Loading…</td>
+              <td className="empty-value">Loading...</td>
             </tr>
           </tbody>
         </table>
@@ -70,7 +70,7 @@ const RoutesTable = ({ routes, isLoading, onNodeSelect, selectedNode }) => {
           {routes.length === 0 && (
             <tr>
               <td colSpan={6} className="empty-value">
-                {isLoading ? 'Loading…' : 'No routes match current filters'}
+                {isLoading ? 'Loading...' : 'No routes match current filters'}
               </td>
             </tr>
           )}
@@ -101,3 +101,4 @@ const RoutesTable = ({ routes, isLoading, onNodeSelect, selectedNode }) => {
 };
 
 export default RoutesTable;
+
