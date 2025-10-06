@@ -7,6 +7,10 @@ const EnvoyDetails = ({
   warnings,
   isLoading,
   error,
+  statsFilter,
+  onStatsFilterChange,
+  statsSections,
+  hasStats,
   listenerFilter,
   onListenerFilterChange,
   listenerRows,
@@ -50,6 +54,23 @@ const EnvoyDetails = ({
   const routeDetailPayload = useMemo(() => (
     selectedRoute?.raw || selectedRoute
   ), [selectedRoute]);
+
+  const metricsSectionsList = Array.isArray(statsSections) ? statsSections : [];
+  const metricsEmpty = metricsSectionsList.length === 0;
+  const metricsPlaceholder = !hasStats
+    ? 'No runtime metrics were returned by Envoy.'
+    : 'No metrics match current filter.';
+  const formatMetricValue = (value) => {
+    if (typeof value === 'number') {
+      return value.toLocaleString();
+    }
+    if (value === null || value === undefined || value === '') {
+      return 'n/a';
+    }
+    return value;
+  };
+
+
 
   if (!selectedPodName) {
     return (
@@ -118,6 +139,56 @@ const EnvoyDetails = ({
           </div>
         )}
 
+        <div className="envoy-section">
+          <div className="envoy-section-header">
+            <h3>Metrics</h3>
+            <input
+              className="filter-input"
+              type="text"
+              value={statsFilter}
+              onChange={(event) => onStatsFilterChange(event.target.value)}
+              placeholder="Filter metrics"
+            />
+          </div>
+          {metricsEmpty ? (
+            <p className="empty-value">{metricsPlaceholder}</p>
+          ) : (
+            <div className="envoy-metrics-collection">
+              {metricsSectionsList.map((category) => (
+                <div key={category.id} className="envoy-metrics-group">
+                  <h4>{category.title}</h4>
+                  <div className="envoy-table-wrapper">
+                    <table className="envoy-data-table envoy-metrics-table">
+                      <thead>
+                        <tr>
+                          <th>Metric</th>
+                          <th>Value</th>
+                          <th>Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {category.metrics.map((metric) => (
+                          <tr key={metric.name}>
+                            <td>
+                              <div className="envoy-metric-name" title={metric.name}>
+                                {metric.metric || metric.name}
+                              </div>
+                              {metric.scope ? (
+                                <div className="envoy-metric-scope">{metric.scope}</div>
+                              ) : null}
+                            </td>
+                            <td className="envoy-metric-value">{formatMetricValue(metric.value)}</td>
+                            <td>{metric.type || 'UNKNOWN'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <div className="envoy-section">
           <div className="envoy-section-header">
             <h3>Listeners</h3>

@@ -6,6 +6,7 @@ import {
   aggregateClusters,
   aggregateListeners,
   aggregateRoutesFromDump,
+  aggregateEnvoyStats,
 } from '../../utils/envoyAggregators';
 
 const EnvoyTab = ({
@@ -27,6 +28,7 @@ const EnvoyTab = ({
   const [listenerFilter, setListenerFilter] = useState('');
   const [clusterFilter, setClusterFilter] = useState('');
   const [routesFilter, setRoutesFilter] = useState('');
+  const [statsFilter, setStatsFilter] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -125,6 +127,27 @@ const EnvoyTab = ({
     config ? aggregateRoutesFromDump(config.sections?.find((section) => section.id === 'routesFromConfigDump')?.payload) : []
   ), [config]);
 
+  const statsSections = useMemo(() => (
+    config ? aggregateEnvoyStats(config.sections?.find((section) => section.id === 'stats')?.payload) : []
+  ), [config]);
+
+  const filteredStatsSections = useMemo(() => {
+    const needle = statsFilter.trim().toLowerCase();
+    if (!needle) {
+      return statsSections;
+    }
+    return statsSections
+      .map((section) => ({
+        ...section,
+        metrics: section.metrics.filter((metric) => (
+          [metric.name, metric.metric, metric.scope, metric.type]
+            .filter(Boolean)
+            .some((value) => value.toString().toLowerCase().includes(needle))
+        )),
+      }))
+      .filter((section) => section.metrics.length > 0);
+  }, [statsSections, statsFilter]);
+
   const filteredListenerRows = useMemo(() => {
     const needle = listenerFilter.trim().toLowerCase();
     if (!needle) {
@@ -215,6 +238,10 @@ const EnvoyTab = ({
         routesFilter={routesFilter}
         onRoutesFilterChange={setRoutesFilter}
         routesRows={filteredRoutesRows}
+        statsFilter={statsFilter}
+        onStatsFilterChange={setStatsFilter}
+        statsSections={filteredStatsSections}
+        hasStats={statsSections.length > 0}
       />
     </div>
   );

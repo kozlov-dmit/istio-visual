@@ -394,3 +394,122 @@ export const buildRouteConfigDetails = (payload) => {
 
   return results;
 };
+const containsAny = (value, substrings) => substrings.some((pattern) => value.includes(pattern));
+
+const STAT_CATEGORY_CONFIG = [
+  { id: 'incomingConnections', title: 'Incoming connections' },
+  { id: 'outgoingConnections', title: 'Outgoing connections' },
+  { id: 'activeConnections', title: 'Active connections' },
+  { id: 'sslMetrics', title: 'SSL/TLS metrics' },
+  { id: 'dataTransfer', title: 'Data transfer' },
+  { id: 'connectionFailures', title: 'Connection failures' },
+  { id: 'other', title: 'Other metrics' },
+];
+
+const FAILURE_PATTERNS = [
+  '_cx_connect_fail',
+  '_cx_connect_timeout',
+  '_cx_connect_error',
+  '_cx_connect_attempts_exceeded',
+  '_cx_destroy',
+  '_cx_overflow',
+  '_cx_reset',
+  '_cx_local_close',
+  '_cx_remote_close',
+  '_cx_lb_fail',
+  '_cx_upstream_flush_active',
+  '_cx_total_failure',
+];
+
+const DATA_PATTERNS = [
+  '_rx_bytes',
+  '_tx_bytes',
+  '_received_bytes',
+  '_sent_bytes',
+  '_bytes_total',
+  '_bandwidth',
+];
+
+const STAT_CLASSIFIERS = [
+  { id: 'connectionFailures', test: (name) => containsAny(name, FAILURE_PATTERNS) },
+  { id: 'activeConnections', test: (name) => name.includes('_cx_active') },
+  { id: 'sslMetrics', test: (name) => name.includes('ssl') || name.includes('tls') },
+  { id: 'dataTransfer', test: (name) => containsAny(name, DATA_PATTERNS) },
+  { id: 'incomingConnections', test: (name) => name.includes('downstream_cx_') },
+  { id: 'outgoingConnections', test: (name) => name.includes('upstream_cx_') },
+];
+
+const splitStatName = (name) => {
+  if (typeof name !== 'string') {
+    return { scope: '', metric: String(name ?? '') };
+  }
+  const parts = name.split('.');
+  if (parts.length <= 1) {
+    return { scope: '', metric: name };
+  }
+  return {
+    scope: parts.slice(0, -1).join('.'),
+    metric: parts[parts.length - 1],
+  };
+};
+
+const normaliseStatValue = (value) => {
+  if (typeof value === 'number') {
+    return value;
+  }
+  const asNumber = Number(value);
+  return Number.isFinite(asNumber) ? asNumber : value;
+};
+
+const classifyStat = (name) => {
+  const lowered = (name || '').toLowerCase();
+  for (const classifier of STAT_CLASSIFIERS) {
+    try {
+      if (classifier.test(lowered)) {
+        return classifier.id;
+      }
+    } catch (err) {
+      // ignore classifier errors and continue
+    }
+  }
+  return 'other';
+};
+
+export const aggregateEnvoyStats = (payload) => {
+  const data = parseJsonPayload(payload);
+  if (!data) {
+    return [];
+  }
+
+  const stats = Array.isArray(data.stats) ? data.stats : [];
+  if (stats.length === 0) {
+    return [];
+  }
+
+  const categories = new Map(STAT_CATEGORY_CONFIG.map((meta) => [meta.id, { ...meta, metrics: [] }]));
+
+  stats.forEach((stat) => {
+    const name = stat?.name;
+    if (!name) {
+      return;
+    }
+    const categoryId = classifyStat(name);
+    const meta = categories.get(categoryId) || categories.get('other');
+    const { scope, metric } = splitStatName(name);
+    const value = normaliseStatValue(stat.value);
+    const type = stat.type || (typeof stat.value === 'number' ? 'COUNTER' : 'UNKNOWN');
+    meta.metrics.push({
+      name,
+      scope,
+      metric,
+      value,
+      type,
+    });
+  });
+
+  categories.forEach((category) => {
+    category.metrics.sort((a, b) => a.metric.localeCompare(b.metric));
+  });
+
+  return Array.from(categories.values()).filter((category) => category.metrics.length > 0);
+};

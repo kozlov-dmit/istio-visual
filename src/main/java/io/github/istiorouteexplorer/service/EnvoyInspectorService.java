@@ -157,8 +157,28 @@ public class EnvoyInspectorService {
             } catch (IOException e) {
                 warnings.add("Failed to parse RoutesConfigDump for pod " + podName + ": " + e.getMessage());
             }
+
         }
 
+        try {
+            ExecResult statsResult = execInIstioProxy(ns, podName, "/stats?format=json");
+            String statsPayload = statsResult.stdout().trim();
+            String statsStderr = statsResult.stderr().trim();
+            if (statsPayload.isEmpty()) {
+                warnings.add("Received empty payload for Envoy stats from pod " + podName);
+            }
+            if (!statsStderr.isEmpty()) {
+                warnings.add("stderr for stats: " + statsStderr);
+            }
+            sections.add(new EnvoyConfigSection(
+                    "stats",
+                    "Runtime stats",
+                    statsPayload,
+                    statsStderr));
+        } catch (IOException e) {
+            log.warn("Failed to read stats from envoy in pod {}: {}", podName, e.getMessage());
+            warnings.add("Failed to load stats: " + e.getMessage());
+        }
         return new EnvoyConfigResponse(toSummary(pod), sections, warnings);
     }
 
